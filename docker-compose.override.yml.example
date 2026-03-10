@@ -1,0 +1,64 @@
+# ==============================================================================
+# docker-compose.override.yml — Local Overrides Example
+# ==============================================================================
+# Copy to docker-compose.override.yml and uncomment the sections you need.
+# Docker Compose automatically merges this file with docker-compose.yml.
+# DO NOT commit docker-compose.override.yml (it's in .gitignore).
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+# ==============================================================================
+
+services:
+
+  # ----------------------------------------------------------------------------
+  # Ollama: enable NVIDIA GPU acceleration
+  # ----------------------------------------------------------------------------
+  # ollama:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   environment:
+  #     OLLAMA_HOST: 0.0.0.0
+  #     NVIDIA_VISIBLE_DEVICES: all
+
+  # ----------------------------------------------------------------------------
+  # Ollama: AMD GPU (ROCm) acceleration
+  # ----------------------------------------------------------------------------
+  # ollama:
+  #   image: ollama/ollama:rocm
+  #   devices:
+  #     - /dev/kfd
+  #     - /dev/dri
+
+  # ----------------------------------------------------------------------------
+  # Letta: connect to external PostgreSQL for persistent agent memory
+  # ----------------------------------------------------------------------------
+  # letta:
+  #   environment:
+  #     LETTA_PG_URI: postgresql://user:password@host:5432/letta
+
+  # ----------------------------------------------------------------------------
+  # n8n: expose webhook port separately or use custom host
+  # ----------------------------------------------------------------------------
+  # n8n:
+  #   environment:
+  #     N8N_HOST: "your-server-ip-or-domain"
+  #     WEBHOOK_URL: "https://your-server-ip-or-domain:5678/"
+  #   ports:
+  #     - "5678:5678"
+  #     - "5679:5679"   # metrics port (if enabled)
+
+  # ----------------------------------------------------------------------------
+  # n8n: mount starter workflows for one-time import
+  # ----------------------------------------------------------------------------
+  # n8n:
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #     - ./config/n8n/workflows:/home/node/import-workflows:ro
+  #   entrypoint: >
+  #     sh -c "n8n import:workflow --separate --input=/home/node/import-workflows
+  #     && n8n start"

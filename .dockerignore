@@ -1,0 +1,21 @@
+# ==============================================================================
+# GenAI Stack .dockerignore
+# ==============================================================================
+
+.git
+.env
+.env.local
+.env.*.local
+.agents/
+data/
+logs/
+*.log
+ollama/models/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+CLAUDE.md

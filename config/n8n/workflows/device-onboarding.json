@@ -1,0 +1,85 @@
+{
+  "name": "Device Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": "devices/+/register",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000001",
+      "name": "MQTT Device Register",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst topic = payload.topic || '';\nconst parts = topic.split('/');\nconst deviceId = parts[1] || 'unknown';\n\nreturn [\n  {\n    json: {\n      device_id: deviceId,\n      device_type: payload.type || 'generic',\n      firmware: payload.firmware || 'unknown',\n      location: payload.location || 'unset',\n      registered_at: new Date().toISOString(),\n      status: 'active',\n    },\n  },\n];"
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000002",
+      "name": "Parse Device Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "topic": "=devices/{{ $json.device_id }}/status",
+        "message": "={\"status\": \"registered\", \"device_id\": \"{{ $json.device_id }}\", \"registered_at\": \"{{ $json.registered_at }}\"}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Publish Confirmation",
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MQTT Device Register": {
+      "main": [
+        [
+          {
+            "node": "Parse Device Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Device Info": {
+      "main": [
+        [
+          {
+            "node": "Publish Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "v0.1.0",
+  "tags": [
+    {"name": "p4n4"},
+    {"name": "mqtt"},
+    {"name": "onboarding"}
+  ]
+}

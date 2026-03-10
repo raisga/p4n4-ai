@@ -1,0 +1,175 @@
+{
+  "name": "Incident Escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": "alerts/+/critical",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000001",
+      "name": "MQTT Critical Alert",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://p4n4-ollama:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama3.2"
+            },
+            {
+              "name": "prompt",
+              "value": "=Classify this IoT alert severity and suggest immediate action. Respond with JSON only: {\"severity\": \"low|medium|high|critical\", \"action\": \"string\", \"notify_team\": true|false}\n\nAlert: {{ JSON.stringify($json) }}"
+            },
+            {
+              "name": "stream",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000002",
+      "name": "Classify Severity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.response || '{}';\nlet classification;\ntry {\n  classification = JSON.parse(raw);\n} catch (e) {\n  classification = { severity: 'unknown', action: raw, notify_team: false };\n}\nreturn [{ json: { ...classification, original_alert: $input.first().json } }];"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000003",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-notify",
+              "leftValue": "={{ $json.notify_team }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Notify Team?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "topic": "alerts/escalated",
+        "message": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000005",
+      "name": "Publish Escalation",
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MQTT Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Classify Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Severity": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "Notify Team?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team?": {
+      "main": [
+        [
+          {
+            "node": "Publish Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "v0.1.0",
+  "tags": [
+    {"name": "p4n4"},
+    {"name": "ollama"},
+    {"name": "mqtt"},
+    {"name": "alerts"}
+  ]
+}

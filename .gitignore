@@ -1,0 +1,47 @@
+# ==============================================================================
+# GenAI Stack .gitignore
+# ==============================================================================
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Local compose overrides
+docker-compose.override.yml
+
+# Docker volumes (if mounted locally)
+data/
+
+# Ollama models (large binary files — pulled at runtime)
+ollama/models/
+
+# n8n user data
+n8n/.n8n/
+n8n/database.sqlite
+
+# Letta agent data
+letta/data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# SEDA agents
+.agents/

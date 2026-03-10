@@ -1,0 +1,100 @@
+services:
+
+  # ====================================================================================
+  # GENAI STACK
+  # ====================================================================================
+
+  # ------------------------------------------------------------------------------------
+  # Local LLM Runtime (Ollama)
+  # ------------------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: p4n4-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - p4n4-net
+
+  # ------------------------------------------------------------------------------------
+  # AI Agent Framework with Memory (Letta)
+  # ------------------------------------------------------------------------------------
+  letta:
+    image: letta/letta:latest
+    container_name: p4n4-letta
+    restart: unless-stopped
+    ports:
+      - "8283:8283"
+    environment:
+      LETTA_SERVER_PASSWORD: ${LETTA_SERVER_PASSWORD:-lettapassword}
+      LETTA_PG_URI: ""
+    volumes:
+      - letta-data:/root/.letta
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8283/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - p4n4-net
+
+  # ------------------------------------------------------------------------------------
+  # Workflow Automation (n8n)
+  # ------------------------------------------------------------------------------------
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: p4n4-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-adminpassword}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-32-char-encryption-key}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://${N8N_HOST:-localhost}:5678/
+      # Shared with IoT stack — must match values in p4n4-iot .env
+      INFLUXDB_URL: http://p4n4-influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-p4n4-stack-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-ming}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-raw_telemetry}
+    volumes:
+      - n8n-data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - p4n4-net
+
+# ====================================================================================
+# NETWORKS
+# ====================================================================================
+networks:
+  p4n4-net:
+    external: true
+    name: p4n4-net
+
+# ====================================================================================
+# VOLUMES
+# ====================================================================================
+volumes:
+  ollama-data:
+  letta-data:
+  n8n-data:
