@@ -313,7 +313,8 @@ docker compose up -d
 **Option 3 — Use the CLI:**
 
 ```bash
-p4n4 up --all   # starts all stacks in the correct order
+p4n4 up        # start IoT stack
+p4n4 up --ai   # start AI stack
 ```
 
 ---
@@ -372,6 +373,7 @@ Use these addresses in n8n workflow nodes, Letta agent configurations, and Ollam
 
 - [p4n4 Platform](https://github.com/raisga/p4n4) — umbrella repo and architecture docs
 - [p4n4-iot](https://github.com/raisga/p4n4-iot) — IoT stack (MING)
+- [p4n4-api](https://github.com/raisga/p4n4-api) — Rust REST API gateway (proxies Ollama and Letta behind JWT auth)
 - [Ollama Documentation](https://ollama.com/library) — available models and API reference
 - [Letta Documentation](https://docs.letta.com/) — agent framework docs
 - [n8n Documentation](https://docs.n8n.io/) — workflow automation docs
