@@ -11,11 +11,14 @@ jobs:
       - name: Validate docker-compose
         run: docker compose -f docker-compose.yml config --quiet
 
-      - name: Lint YAML/JSON configs
+      # .env.example isn't YAML: check it by letting Compose load it instead.
+      - name: Lint YAML configs
         run: |
           pip install yamllint
-          yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" \
-            docker-compose.yml .env.example
+          yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" docker-compose.yml
+
+      - name: Check .env.example loads in Compose
+        run: docker compose --env-file .env.example -f docker-compose.yml config --quiet
 
       - name: Check .env.example completeness
         run: python3 scripts/check_env_example.py
@@ -23,5 +26,6 @@ jobs:
       - name: Validate n8n workflow JSON files
         run: |
           for f in config/n8n/workflows/*.json; do
-            python3 -m json.tool "$f" > /dev/null && echo "OK: $f"
+            python3 -m json.tool "$f" > /dev/null || { echo "::error file=$f::invalid JSON"; exit 1; }
+            echo "OK: $f"
           done

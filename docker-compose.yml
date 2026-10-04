@@ -1,3 +1,7 @@
+# Every service is optional: each sits in a profile of its own name, and
+# COMPOSE_PROFILES in .env lists the ones that start. The default is Ollama;
+# add letta and n8n as needed. None of them depends on another.
+
 services:
 
   # ====================================================================================
@@ -10,9 +14,10 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: p4n4-ollama
+    profiles: [ollama]
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "${OLLAMA_PORT:-11434}:11434"
     environment:
       OLLAMA_HOST: 0.0.0.0
     volumes:
@@ -32,6 +37,7 @@ services:
   letta:
     image: letta/letta:latest
     container_name: p4n4-letta
+    profiles: [letta]
     restart: unless-stopped
     ports:
       - "8283:8283"
@@ -55,6 +61,7 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: p4n4-n8n
+    profiles: [n8n]
     restart: unless-stopped
     ports:
       - "5678:5678"

@@ -16,6 +16,7 @@ Part of the [p4n4](https://github.com/raisga/p4n4) platform — an EdgeAI + GenA
 - [Stack Components](#stack-components)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
+- [Choosing Services](#choosing-services)
 - [Project Structure](#project-structure)
 - [Ollama Models](#ollama-models)
 - [n8n Workflows](#n8n-workflows)
@@ -54,8 +55,8 @@ Part of the [p4n4](https://github.com/raisga/p4n4) platform — an EdgeAI + GenA
 | Service | Role | Description |
 |---------|------|-------------|
 | **[Ollama](https://ollama.com/)** | Local LLM Runtime | Runs open-weight models (Llama, Mistral, Phi, etc.) entirely on-device with zero data egress. Exposes an OpenAI-compatible REST API on port 11434. |
-| **[Letta](https://letta.com/)** | AI Agent Framework | Stateful AI agent framework with persistent memory (formerly MemGPT). Build agents that remember context across sessions and reason over long-term IoT event histories. |
-| **[n8n](https://n8n.io/)** | Workflow Automation | Low-code, node-based workflow engine. Connects MQTT, InfluxDB, Ollama, Letta, and external APIs without custom glue code. Includes four starter IoT + AI workflows. |
+| **[Letta](https://letta.com/)** *(optional)* | AI Agent Framework | Stateful AI agent framework with persistent memory (formerly MemGPT). Build agents that remember context across sessions and reason over long-term IoT event histories. |
+| **[n8n](https://n8n.io/)** *(optional)* | Workflow Automation | Low-code, node-based workflow engine. Connects MQTT, InfluxDB, Ollama, Letta, and external APIs without custom glue code. Includes four starter IoT + AI workflows. |
 
 ---
 
@@ -112,6 +113,24 @@ Part of the [p4n4](https://github.com/raisga/p4n4) platform — an EdgeAI + GenA
    - n8n: <http://localhost:5678>
    - Letta: <http://localhost:8283>
    - Ollama API: <http://localhost:11434>
+
+   Letta and n8n only run when enabled; see [Choosing Services](#choosing-services).
+
+---
+
+## Choosing Services
+
+Every service is optional. Each one sits in a [Compose profile](https://docs.docker.com/compose/how-tos/profiles/) of its own name, and `COMPOSE_PROFILES` in `.env` lists the ones that start:
+
+```bash
+# Default: Ollama only
+COMPOSE_PROFILES=ollama
+
+# Ollama with Letta agents and n8n workflows
+COMPOSE_PROFILES=ollama,letta,n8n
+```
+
+Run `docker compose up -d --remove-orphans` after changing it. `make start SERVICE=<name>` starts any service, whether or not it is listed, and `make down` stops them all. If `.env` has no `COMPOSE_PROFILES` line, plain `docker compose up` starts nothing; the `make` targets fall back to Ollama.
 
 ---
 
@@ -189,7 +208,7 @@ Four starter workflows are included in `n8n/workflows/`. Import them via the n8n
 
 | Workflow | Description |
 |----------|-------------|
-| `alert-enrichment.json` | Subscribes to `inference/results` MQTT topic; sends low-confidence results to Ollama for analysis |
+| `alert-enrichment.json` | Subscribes to `inference/+/result` MQTT topics; sends low-confidence results to Ollama for analysis |
 | `scheduled-digest.json` | Runs hourly; queries InfluxDB for recent telemetry and generates a natural-language summary via Ollama |
 | `device-onboarding.json` | Listens on `devices/+/register`; auto-registers new devices and publishes a confirmation to MQTT |
 | `incident-escalation.json` | Listens on `alerts/+/critical`; classifies severity via Ollama and publishes enriched alert to `alerts/escalated` |
@@ -272,7 +291,7 @@ docker run --rm --network p4n4-net curlimages/curl \
 
 | Service | Port | URL |
 |---------|------|-----|
-| Ollama API | `11434` | <http://localhost:11434> |
+| Ollama API | `11434` (`OLLAMA_PORT`) | <http://localhost:11434> |
 | Letta Server | `8283` | <http://localhost:8283> |
 | n8n UI | `5678` | <http://localhost:5678> |
 

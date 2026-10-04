@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "topics": "inference/results",
+        "topics": "inference/+/result",
         "options": {}
       },
       "id": "a1b2c3d4-0001-0001-0001-000000000001",
