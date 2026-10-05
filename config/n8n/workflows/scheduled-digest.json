@@ -1,4 +1,5 @@
 {
+  "id": "p4n4ScheduledDigest",
   "name": "Scheduled Telemetry Digest",
   "nodes": [
     {
@@ -20,19 +21,37 @@
     },
     {
       "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "org",
+              "value": "ming"
+            },
+            {
+              "name": "bucket",
+              "value": "raw_telemetry"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000005",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "notes": "INFLUXDB_ORG and INFLUXDB_BUCKET from the project's .env"
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ $env.INFLUXDB_URL }}/api/v2/query",
+        "url": "=http://p4n4-influxdb:8086/api/v2/query?org={{ encodeURIComponent($json.org) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Token {{ $env.INFLUXDB_TOKEN }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/vnd.flux"
-            },
             {
               "name": "Accept",
               "value": "application/csv"
@@ -44,7 +63,11 @@
           "parameters": [
             {
               "name": "query",
-              "value": "=from(bucket: \"{{ $env.INFLUXDB_BUCKET }}\") |> range(start: -1h) |> mean() |> limit(n: 10)"
+              "value": "=from(bucket: \"{{ $json.bucket }}\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"sensor_data\" and r._field == \"value\")\n  |> group(columns: [\"device\", \"sensor\"])\n  |> mean()"
+            },
+            {
+              "name": "type",
+              "value": "flux"
             }
           ]
         },
@@ -54,7 +77,13 @@
       "name": "Query InfluxDB",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "p4n4 InfluxDB"
+        }
+      }
     },
     {
       "parameters": {
@@ -92,7 +121,7 @@
       "name": "Generate Summary",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300]
+      "position": [900, 300]
     },
     {
       "parameters": {
@@ -113,13 +142,24 @@
       "id": "a1b2c3d4-0002-0002-0002-000000000004",
       "name": "Format Digest",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3,
-      "position": [900, 300]
+      "typeVersion": 2,
+      "position": [1120, 300]
     }
   ],
   "pinData": {},
   "connections": {
     "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
       "main": [
         [
           {
@@ -157,11 +197,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "v0.1.0",
+  "versionId": "9aeb4b98-ac07-527e-a5f1-05b1033afb17",
   "tags": [
-    {"name": "p4n4"},
-    {"name": "ollama"},
-    {"name": "influxdb"},
-    {"name": "scheduled"}
+    {"id": "p4n4tag-p4n4", "name": "p4n4"},
+    {"id": "p4n4tag-ollama", "name": "ollama"},
+    {"id": "p4n4tag-influxdb", "name": "influxdb"},
+    {"id": "p4n4tag-scheduled", "name": "scheduled"}
   ]
 }

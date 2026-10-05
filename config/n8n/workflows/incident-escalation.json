@@ -1,10 +1,13 @@
 {
+  "id": "p4n4IncidentEscalation",
   "name": "Incident Escalation",
   "nodes": [
     {
       "parameters": {
         "topics": "alerts/+/critical",
-        "options": {}
+"options": {
+          "jsonParseBody": true
+        }
       },
       "id": "a1b2c3d4-0004-0004-0004-000000000001",
       "name": "MQTT Critical Alert",
@@ -45,6 +48,10 @@
             {
               "name": "stream",
               "value": false
+            },
+            {
+              "name": "format",
+              "value": "json"
             }
           ]
         },
@@ -58,7 +65,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json.response || '{}';\nlet classification;\ntry {\n  classification = JSON.parse(raw);\n} catch (e) {\n  classification = { severity: 'unknown', action: raw, notify_team: false };\n}\nreturn [{ json: { ...classification, original_alert: $input.first().json } }];"
+        "jsCode": "const raw = $input.first().json.response || '{}';\nlet classification;\ntry {\n  classification = JSON.parse(raw);\n} catch (e) {\n  classification = { severity: 'unknown', action: raw, notify_team: false };\n}\nreturn [{ json: { ...classification, original_alert: $('MQTT Critical Alert').first().json } }];"
       },
       "id": "a1b2c3d4-0004-0004-0004-000000000003",
       "name": "Parse Classification",
@@ -165,11 +172,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "v0.1.0",
+  "versionId": "6748954d-7864-5393-a196-f97d73b72859",
   "tags": [
-    {"name": "p4n4"},
-    {"name": "ollama"},
-    {"name": "mqtt"},
-    {"name": "alerts"}
+    {"id": "p4n4tag-p4n4", "name": "p4n4"},
+    {"id": "p4n4tag-ollama", "name": "ollama"},
+    {"id": "p4n4tag-mqtt", "name": "mqtt"},
+    {"id": "p4n4tag-alerts", "name": "alerts"}
   ]
 }

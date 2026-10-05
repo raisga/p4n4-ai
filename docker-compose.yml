@@ -12,14 +12,19 @@ services:
   # Local LLM Runtime (Ollama)
   # ------------------------------------------------------------------------------------
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.35
     container_name: p4n4-ollama
     profiles: [ollama]
     restart: unless-stopped
     ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      # No authentication: localhost only by default. n8n and Letta reach it as
+      # p4n4-ollama:11434 on p4n4-net, p4n4-api on the host's localhost.
+      - "${OLLAMA_BIND:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434"
     environment:
       OLLAMA_HOST: 0.0.0.0
+      # Small-host defaults: one model in memory, one request at a time
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-1}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -35,19 +40,28 @@ services:
   # AI Agent Framework with Memory (Letta)
   # ------------------------------------------------------------------------------------
   letta:
-    image: letta/letta:latest
+    # Pinned: letta/letta:latest is now Letta's Code App Server, a different
+    # product. 0.16 is the server p4n4-api's Agent endpoints use (/v1/agents/).
+    image: letta/letta:0.16.8
     container_name: p4n4-letta
     profiles: [letta]
     restart: unless-stopped
     ports:
-      - "8283:8283"
+      - "${LETTA_BIND:-127.0.0.1}:8283:8283"
     environment:
+      # Require LETTA_SERVER_PASSWORD (as "Authorization: Bearer <password>")
+      # on every request; without SECURE the password isn't checked
+      SECURE: "true"
       LETTA_SERVER_PASSWORD: ${LETTA_SERVER_PASSWORD:-lettapassword}
+      # Empty: use the Postgres bundled in the image
       LETTA_PG_URI: ""
+      # Models from this stack's Ollama
+      OLLAMA_BASE_URL: http://p4n4-ollama:11434
     volumes:
-      - letta-data:/root/.letta
+      # Agents and their memory live in the bundled Postgres
+      - letta-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8283/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:8283/v1/health/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,7 +73,8 @@ services:
   # Workflow Automation (n8n)
   # ------------------------------------------------------------------------------------
   n8n:
-    image: n8nio/n8n:latest
+    # Pinned to the version the starter workflows were tested with
+    image: n8nio/n8n:2.41.6
     container_name: p4n4-n8n
     profiles: [n8n]
     restart: unless-stopped
@@ -74,6 +89,13 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: http
       WEBHOOK_URL: http://${N8N_HOST:-localhost}:5678/
+      # Schedules and dates in expressions use the project's timezone, not
+      # n8n's default of America/New_York
+      GENERIC_TIMEZONE: ${TZ:-UTC}
+      TZ: ${TZ:-UTC}
+      # No usage reports or update checks to n8n's servers
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       # Shared with IoT stack — must match values in p4n4-iot .env
       INFLUXDB_URL: http://p4n4-influxdb:8086
       INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-p4n4-stack-token}
@@ -103,5 +125,5 @@ networks:
 # ====================================================================================
 volumes:
   ollama-data:
-  letta-data:
+  letta-pgdata:
   n8n-data:

@@ -1,10 +1,13 @@
 {
+  "id": "p4n4DeviceOnboarding",
   "name": "Device Onboarding",
   "nodes": [
     {
       "parameters": {
         "topics": "devices/+/register",
-        "options": {}
+"options": {
+          "jsonParseBody": true
+        }
       },
       "id": "a1b2c3d4-0003-0003-0003-000000000001",
       "name": "MQTT Device Register",
@@ -20,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $input.first().json;\nconst topic = payload.topic || '';\nconst parts = topic.split('/');\nconst deviceId = parts[1] || 'unknown';\n\nreturn [\n  {\n    json: {\n      device_id: deviceId,\n      device_type: payload.type || 'generic',\n      firmware: payload.firmware || 'unknown',\n      location: payload.location || 'unset',\n      registered_at: new Date().toISOString(),\n      status: 'active',\n    },\n  },\n];"
+        "jsCode": "// The trigger parses the JSON body: { topic, message }\nconst { topic = '', message } = $input.first().json;\nconst payload = message && typeof message === 'object' ? message : {};\nconst device = topic.split('/')[1] || 'unknown';\n\nreturn [\n  {\n    json: {\n      device,\n      device_type: payload.type || 'generic',\n      firmware: payload.firmware || 'unknown',\n      location: payload.location || 'unset',\n      registered_at: new Date().toISOString(),\n      status: 'active',\n    },\n  },\n];"
       },
       "id": "a1b2c3d4-0003-0003-0003-000000000002",
       "name": "Parse Device Info",
@@ -30,8 +33,9 @@
     },
     {
       "parameters": {
-        "topic": "=devices/{{ $json.device_id }}/status",
-        "message": "={\"status\": \"registered\", \"device_id\": \"{{ $json.device_id }}\", \"registered_at\": \"{{ $json.registered_at }}\"}",
+        "topic": "=devices/{{ $json.device }}/status",
+        "message": "={{ JSON.stringify({ status: 'registered', device: $json.device, registered_at: $json.registered_at }) }}",
+        "sendInputData": false,
         "options": {}
       },
       "id": "a1b2c3d4-0003-0003-0003-000000000003",
@@ -76,10 +80,10 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "v0.1.0",
+  "versionId": "1be05c4a-a1aa-59d2-8498-8ff686bba940",
   "tags": [
-    {"name": "p4n4"},
-    {"name": "mqtt"},
-    {"name": "onboarding"}
+    {"id": "p4n4tag-p4n4", "name": "p4n4"},
+    {"id": "p4n4tag-mqtt", "name": "mqtt"},
+    {"id": "p4n4tag-onboarding", "name": "onboarding"}
   ]
 }

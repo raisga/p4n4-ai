@@ -186,7 +186,7 @@ docker exec p4n4-ollama ollama pull llama3.2
 | `llama3.2` | 2 GB | General inference, alert analysis, summaries |
 | `phi3.5` | 2.2 GB | Lightweight reasoning, classification |
 | `nomic-embed-text` | 274 MB | Embeddings for Letta agent memory |
-| `llama3.2:70b` | 40 GB | High-quality reasoning (requires GPU) |
+| `llama3.3:70b` | 43 GB | High-quality reasoning (needs a GPU host, far beyond a Raspberry Pi) |
 
 ### Listing Installed Models
 
@@ -200,11 +200,25 @@ docker exec p4n4-ollama ollama list
 
 ## n8n Workflows
 
-Four starter workflows are included in `n8n/workflows/`. Import them via the n8n UI:
+Four starter workflows are included in `config/n8n/workflows/`. Import them via the n8n UI:
 
 1. Open n8n at <http://localhost:5678>
-2. Go to **Workflows → Import from File**
-3. Select the JSON file from `config/n8n/workflows/`
+2. Create the two credentials below
+3. Go to **Workflows → Import from File** and select a JSON file from `config/n8n/workflows/`
+4. Publish (activate) each imported workflow
+
+Or import them all from the command line, then publish them and restart n8n:
+
+```bash
+docker cp config/n8n/workflows p4n4-n8n:/tmp/workflows
+docker exec p4n4-n8n n8n import:workflow --separate --input=/tmp/workflows
+for id in p4n4AlertEnrichment p4n4DeviceOnboarding p4n4IncidentEscalation p4n4ScheduledDigest; do
+  docker exec p4n4-n8n n8n publish:workflow --id=$id
+done
+docker restart p4n4-n8n
+```
+
+The workflows have fixed IDs, so importing them again updates them instead of adding copies.
 
 | Workflow | Description |
 |----------|-------------|
@@ -213,13 +227,14 @@ Four starter workflows are included in `n8n/workflows/`. Import them via the n8n
 | `device-onboarding.json` | Listens on `devices/+/register`; auto-registers new devices and publishes a confirmation to MQTT |
 | `incident-escalation.json` | Listens on `alerts/+/critical`; classifies severity via Ollama and publishes enriched alert to `alerts/escalated` |
 
-### MQTT Credential Setup in n8n
+### Credentials and Settings in n8n
 
-After importing workflows, configure an MQTT credential named **`p4n4 MQTT`**:
+The workflows use two credentials, matched by name:
 
-- Host: `p4n4-mqtt` *(service name on p4n4-net)*
-- Port: `1883`
-- Username/Password: match values in your p4n4-iot `.env`
+- **`p4n4 MQTT`** (type MQTT): host `p4n4-mqtt` *(service name on p4n4-net)*, port `1883`, and the username and password from your p4n4-iot `.env` if the broker requires them.
+- **`p4n4 InfluxDB`** (type Header Auth, used by the Scheduled Digest): name `Authorization`, value `Token <INFLUXDB_TOKEN>` with the token from this stack's `.env`.
+
+The Scheduled Digest's **Settings** node holds the InfluxDB org and bucket it queries (`ming` and `raw_telemetry`, the platform defaults). If your project uses another `INFLUXDB_ORG`, change it there. The workflows don't read `.env` through `$env`: n8n blocks that by default.
 
 ---
 
@@ -291,8 +306,8 @@ docker run --rm --network p4n4-net curlimages/curl \
 
 | Service | Port | URL |
 |---------|------|-----|
-| Ollama API | `11434` (`OLLAMA_PORT`) | <http://localhost:11434> |
-| Letta Server | `8283` | <http://localhost:8283> |
+| Ollama API | `11434` (`OLLAMA_PORT`), on `127.0.0.1` (`OLLAMA_BIND`) | <http://localhost:11434> |
+| Letta Server | `8283`, on `127.0.0.1` (`LETTA_BIND`) | <http://localhost:8283> |
 | n8n UI | `5678` | <http://localhost:5678> |
 
 ---
@@ -303,10 +318,10 @@ All credentials are set in `.env`. Defaults from `.env.example`:
 
 | Service | Username | Password |
 |---------|----------|----------|
-| n8n | `admin` | `adminpassword` |
-| Letta | *(no username)* | `lettapassword` |
+| n8n | *(owner account)* | Created on the first visit to <http://localhost:5678> |
+| Letta | *(no username)* | `lettapassword` (`LETTA_SERVER_PASSWORD`) |
 
-**Note:** Change all passwords and the `N8N_ENCRYPTION_KEY` before deploying to production.
+**Note:** n8n asks whoever opens it first to create the owner account, so open it and create the account as soon as the stack is up. Change all passwords and the `N8N_ENCRYPTION_KEY` before deploying to production.
 
 ---
 
@@ -346,9 +361,9 @@ p4n4 up --ai   # start AI stack
 
 3. **Letta API password** — set `LETTA_SERVER_PASSWORD` to a strong value. All API calls require this password as a bearer token.
 
-4. **Restrict port exposure** — for production, remove host-port bindings from `docker-compose.yml` and access services only via `p4n4-net` or a reverse proxy.
+4. **Restrict port exposure** — Ollama and Letta are published on `127.0.0.1` only (`OLLAMA_BIND`, `LETTA_BIND`). For remote access, use a reverse proxy with TLS rather than binding them to other addresses.
 
-5. **Ollama access** — Ollama has no built-in authentication. Restrict access at the network or reverse-proxy level for production deployments.
+5. **Ollama access** — Ollama has no built-in authentication: anyone who can reach its port can pull, delete and run models. Keep `OLLAMA_BIND=127.0.0.1` unless the network is trusted.
 
 ---
 

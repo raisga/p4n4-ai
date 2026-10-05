@@ -53,7 +53,8 @@ services:
   #     - "5679:5679"   # metrics port (if enabled)
 
   # ----------------------------------------------------------------------------
-  # n8n: mount starter workflows for one-time import
+  # n8n: mount starter workflows for one-time import (fixed IDs: importing
+  # again updates them; publish them afterwards, see README)
   # ----------------------------------------------------------------------------
   # n8n:
   #   volumes:
