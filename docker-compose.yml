@@ -15,7 +15,7 @@ services:
     image: ollama/ollama:0.35
     container_name: p4n4-ollama
     profiles: [ollama]
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       # No authentication: localhost only by default. n8n and Letta reach it as
       # p4n4-ollama:11434 on p4n4-net, p4n4-api on the host's localhost.
@@ -45,7 +45,7 @@ services:
     image: letta/letta:0.16.8
     container_name: p4n4-letta
     profiles: [letta]
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - "${LETTA_BIND:-127.0.0.1}:8283:8283"
     environment:
@@ -77,7 +77,7 @@ services:
     image: n8nio/n8n:2.41.6
     container_name: p4n4-n8n
     profiles: [n8n]
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
     ports:
       - "5678:5678"
     environment:
