@@ -1,6 +1,6 @@
 # Every service is optional: each sits in a profile of its own name, and
 # COMPOSE_PROFILES in .env lists the ones that start. The default is Ollama;
-# add letta and n8n as needed. None of them depends on another.
+# add letta, n8n and system1 as needed. None of them depends on another.
 
 services:
 
@@ -112,6 +112,72 @@ services:
     networks:
       - p4n4-net
 
+  # ------------------------------------------------------------------------------------
+  # Fast Typed Decisions (System 1, laya): advisory routing, opt-in with the system1
+  # profile. Fetch the pinned checkpoint first: docker compose run --rm system1-pull
+  # ------------------------------------------------------------------------------------
+  system1:
+    image: ${SYSTEM1_IMAGE:-ghcr.io/raisga/p4n4-system1:0.1.0}
+    container_name: p4n4-system1
+    profiles: [system1]
+    restart: ${RESTART_POLICY:-unless-stopped}
+    # No host port: callers on p4n4-net use http://p4n4-system1:8000
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # Empty: the service refuses to start (32+ characters)
+      LAYA_API_KEY: ${SYSTEM1_API_KEY:-}
+      LAYA_THREADS: ${SYSTEM1_THREADS:-2}
+      SYSTEM1_REVISION: ${SYSTEM1_REVISION:-aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8}
+      SYSTEM1_CHECKPOINT: ${SYSTEM1_CHECKPOINT:-multilingual}
+    volumes:
+      - system1-models:/models:ro
+      - ./config/system1/questions:/config/questions:ro
+    healthcheck:
+      # The image has neither curl nor wget
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    networks:
+      - p4n4-net
+
+  # One-shot download of the pinned checkpoint, checked against the image's hashes. Its
+  # own profile keeps `up` from running it; `p4n4 ai system1 pull` does.
+  system1-pull:
+    image: ${SYSTEM1_IMAGE:-ghcr.io/raisga/p4n4-system1:0.1.0}
+    profiles: [system1-pull]
+    # The same user as the service: huggingface_hub keeps its offline index owner-only
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      HF_HUB_OFFLINE: "0"
+      SYSTEM1_REVISION: ${SYSTEM1_REVISION:-aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8}
+      SYSTEM1_CHECKPOINT: ${SYSTEM1_CHECKPOINT:-multilingual}
+    command: ["python", "/app/system1_app.py", "pull"]
+    volumes:
+      - system1-models:/models
+    networks:
+      - p4n4-net
+
 # ====================================================================================
 # NETWORKS
 # ====================================================================================
@@ -127,3 +193,4 @@ volumes:
   ollama-data:
   letta-pgdata:
   n8n-data:
+  system1-models:

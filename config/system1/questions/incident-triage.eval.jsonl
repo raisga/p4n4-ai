@@ -1,0 +1,62 @@
+{"state": {"alert": "Motor winding temperature 135 °C on conveyor drive 2, 15 °C above its limit"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Cold room temperature 9.4 °C, 5.4 °C above its 4 °C limit for 20 minutes"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Chiller supply water at 18 °C, cooling not keeping up with the 7 °C setpoint"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Bearing temperature on fan-3 rising: 88 °C, limit 80 °C"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Inverter heatsink overtemperature, 95 °C"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Server rack inlet air 38 °C, cooling unit stopped"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Freezer at -8 °C, 10 °C above its limit, compressor running continuously"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Gearbox 2 oil temperature 104 °C, over the 90 °C alarm limit"}, "expect": {"cause": "thermal"}, "source": "generic"}
+{"state": {"alert": "Vibration on pump-2 at 9.3 mm/s RMS, above the 7.1 mm/s alarm level"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Water leak detected under pump skid 1"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Filter differential pressure 2.4 bar: filter blocked"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Belt slip on conveyor 4, speed mismatch 12%"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Hydraulic pressure dropping, oil found under press 2"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Bearing noise and rising vibration on fan-3, 6.8 mm/s RMS"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Crack found on the weld seam of tank 5 during inspection"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Gear wear: particle count in gearbox oil doubled since last week"}, "expect": {"cause": "mechanical"}, "source": "generic"}
+{"state": {"alert": "Mains power lost at substation B, running on UPS"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Phase voltage L2 dropped to 180 V, nominal 230 V"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Motor current 48 A on pump-1, overload trip at 45 A"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Fuse F3 blown in control cabinet 2"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Variable frequency drive fault: DC bus undervoltage"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Ground fault detected on circuit 7"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Relay K4 failed to energise, contactor feedback missing"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "UPS on battery, 12 minutes of runtime remaining"}, "expect": {"cause": "electrical"}, "source": "generic"}
+{"state": {"alert": "Gateway gw-02 offline: no heartbeat for 15 minutes"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "MQTT broker unreachable: connection timed out after 30 s"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "Modbus TCP timeout reading PLC 10.0.4.12, 5 retries failed"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "connect ECONNREFUSED 172.18.0.5:1883, no telemetry received for 10 minutes"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "LoRaWAN node 0x3F2A missed 6 uplinks in a row"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "Network switch port 12 link down, 4 devices unreachable"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "DNS resolution failed for influxdb, writes queued"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "Cellular modem signal lost, last message 22 minutes ago"}, "expect": {"cause": "connectivity"}, "source": "generic"}
+{"state": {"alert": "Temperature sensor reads -127 °C, physically implausible"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Pressure reading stuck at 4.000 bar for 6 hours"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Battery at 15% on humidity sensor hs-04"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Level sensor jumps between 0% and 100% every few seconds"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Humidity reading 140%, outside the sensor's range"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Calibration drift: reference probe and sensor differ by 3.2 °C"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "No readings from thermocouple channel 3, open circuit"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Redundant pressure transmitters PT-1 and PT-2 disagree by 1.5 bar"}, "expect": {"cause": "sensor_fault"}, "source": "generic"}
+{"state": {"alert": "Oven setpoint changed from 180 °C to 250 °C by the operator"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Batch 2231 recipe mismatch: wrong flour type loaded"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Raw material silo 2 empty, line starved"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Line 3 speed set to 140% of nominal by the operator"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Dosing pump set to 0 ml/h, chlorine below target"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Wrong product code scanned at filler 2, line paused"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Operator skipped the clean-in-place step before batch 88"}, "expect": {"cause": "process"}, "source": "generic"}
+{"state": {"alert": "Status changed."}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Alarm"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Check device"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Lorem ipsum dolor sit amet"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Event 0x1F"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "See attached report"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Firmware update available for gw-01"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Cold-room door open for 3 minutes"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Emergency stop pressed on line 4"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Maintenance window starts at 22:00"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Device rebooted"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Test alert, please ignore"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Badge reader at access door 2: unknown card presented"}, "expect": {"cause": null}, "source": "edge"}
+{"state": {"alert": "Shift handover note: all normal"}, "expect": {"cause": null}, "source": "edge"}

@@ -1,0 +1,4 @@
+# System 1 image: laya-serve on CPU torch. Compile the hashed locks with
+# `make system1-lock` (one per architecture); the image installs them with --require-hashes.
+laya[serve]==0.4.6
+torch==2.14.0+cpu

@@ -1,0 +1,338 @@
+{
+  "id": "p4n4OperatorIntake",
+  "name": "Operator Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": "operator/messages/+",
+        "options": {
+          "jsonParseBody": true
+        }
+      },
+      "id": "oi-mqtt",
+      "name": "MQTT Operator Message",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "operator-intake",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "oi-webhook",
+      "name": "Webhook Operator Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ],
+      "webhookId": "p4n4-operator-intake",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "p4n4-operator-intake",
+          "name": "p4n4 Operator Intake"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// One shape for both inputs. MQTT: operator/messages/<channel>. Webhook: the\n// body, with its own `channel`. A channel adapter (Telegram, WhatsApp, a web\n// chat) sends {conversation, user, text} for a message, or {conversation,\n// button} when the operator presses a button of a reply. It reads the replies\n// on operator/replies/<channel>.\nconst fromMqtt = typeof $json.topic === 'string';\nconst body = fromMqtt ? $json.message : $json.body;\nconst msg = body && typeof body === 'object' && !Array.isArray(body) ? body : {};\nconst name = fromMqtt ? $json.topic.split('/')[2] : msg.channel;\nconst channel = /^[a-z0-9_-]{1,32}$/.test(String(name || '')) ? String(name) : 'unknown';\nconst conversation = String(msg.conversation ?? '').slice(0, 128);\nconst button = msg.button && typeof msg.button === 'object' ? msg.button : null;\n// The whole message, whitespace collapsed, at most 500 characters\nconst text = typeof msg.text === 'string' ? msg.text.replace(/\\s+/g, ' ').trim().slice(0, 500) : '';\n\nreturn {\n  json: {\n    kind: !conversation ? 'invalid' : button ? 'button' : 'message',\n    channel,\n    conversation,\n    user: String(msg.user ?? '').slice(0, 128),\n    lang: ['en', 'es'].includes(msg.lang) ? msg.lang : null,\n    text,\n    button,\n  },\n};\n"
+      },
+      "id": "oi-normalise",
+      "name": "Normalise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ── SITE CONFIG: edit for your site ─────────────────────────────────────────\n// Labels for the buttons, per language. The keys must be the options of the\n// operator-intake question set (config/system1/questions/operator-intake.json):\n// rename the assets in both places.\nconst INTENTS = {\n  report_fault: { en: 'Report a fault', es: 'Reportar una falla' },\n  status_request: { en: 'Status request', es: 'Consulta de estado' },\n  maintenance_request: { en: 'Maintenance request', es: 'Solicitud de mantenimiento' },\n};\nconst ASSETS = {\n  'pump-1': { en: 'Pump 1', es: 'Bomba 1' },\n  'pump-2': { en: 'Pump 2', es: 'Bomba 2' },\n  'pump-3': { en: 'Pump 3', es: 'Bomba 3' },\n  'compressor-1': { en: 'Air compressor', es: 'Compresor' },\n  none: { en: 'No specific asset', es: 'Ningún equipo' },\n};\n// A no-answer key of the set, and the buttons that clarify it\nconst ASSET_GROUPS = { pump: ['pump-1', 'pump-2', 'pump-3'] };\n// Greetings and thanks, per language. A message made only of these (and of\n// FILLER words), at most 40 characters, gets a canned reply and never reaches\n// System 1, which routes small talk as requests (docs: decisions/system1.md §6.6).\nconst GREETINGS = {\n  en: ['good morning', 'good afternoon', 'good evening', 'hello', 'hi', 'hey', 'bye', 'cheers'],\n  es: ['buenos días', 'buenos dias', 'buenas tardes', 'buenas noches', 'buenas', 'hola', 'adiós', 'adios', 'chao', 'saludos'],\n};\nconst THANKS = {\n  en: ['thank you', 'thanks', 'thx', 'ok', 'okay', 'great', 'perfect'],\n  es: ['muchas gracias', 'gracias', 'vale', 'ok', 'perfecto', 'genial'],\n};\nconst FILLER = ['team', 'all', 'everyone', 'you', 'very', 'much', 'so', 'a', 'todos', 'equipo', 'muy', 'y', 'and'];\nconst REPLIES = {\n  greeting: { en: 'Hello! Tell me about a fault, ask for a status or request maintenance.', es: '¡Hola! Cuénteme de una falla, pida un estado o solicite mantenimiento.' },\n  thanks: { en: \"You're welcome.\", es: 'De nada.' },\n  which_intent: { en: 'What do you need?', es: '¿Qué necesita?' },\n  which_asset: { en: 'Which equipment is it about?', es: '¿De qué equipo se trata?' },\n  confirm: { en: 'Please confirm: {intent} for {asset}.', es: 'Confirme por favor: {intent} para {asset}.' },\n  confirmed: { en: 'Sent: {intent} for {asset}.', es: 'Enviado: {intent} para {asset}.' },\n  cancelled: { en: 'Cancelled.', es: 'Cancelado.' },\n  expired: { en: 'That request has expired. Please send it again.', es: 'Esa solicitud venció. Envíela de nuevo, por favor.' },\n  confirm_button: { en: 'Confirm', es: 'Confirmar' },\n  change_intent: { en: 'Change the request', es: 'Cambiar la solicitud' },\n  change_asset: { en: 'Change the equipment', es: 'Cambiar el equipo' },\n  cancel_button: { en: 'Cancel', es: 'Cancelar' },\n};\n// Drafts not confirmed within this time are dropped\nconst DRAFT_TTL_MS = 30 * 60 * 1000;\n// Opt-in: also send the message text with each confirmation on\n// system1/feedback/operator-intake, so it can become an evaluation example\n// (p4n4 ai system1 feedback). Messages can hold personal data: off by default.\nconst FEEDBACK_STATES = false;\n// ─────────────────────────────────────────────────────────────────────────────\n\nconst SET = 'operator-intake';\nconst CALLER = 'n8n-operator-intake';\nconst FIELDS = ['intent', 'asset'];\nconst LABELS = { intent: INTENTS, asset: ASSETS };\n\nfunction guessLang(text) {\n  const words = text.toLowerCase().match(/[a-záéíóúñü]+/g) || [];\n  const es = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'que', 'por', 'para', 'una', 'un', 'hay', 'está', 'esta', 'no', 'se', 'bomba', 'compresor', 'necesitamos', 'gracias', 'hola', 'buenos', 'buenas']);\n  const hits = words.filter(w => es.has(w)).length;\n  return hits > 0 && hits * 4 >= words.length || /[¿¡ñ]/.test(text) ? 'es' : 'en';\n}\nfunction t(key, lang, vars = {}) {\n  const s = REPLIES[key][lang] || REPLIES[key].en;\n  return s.replace(/\\{(\\w+)\\}/g, (_, k) => vars[k] ?? '');\n}\nfunction label(field, key, lang) {\n  const l = LABELS[field][key];\n  return l ? l[lang] || l.en : key;\n}\nfunction reply(ctx, text, buttons = []) {\n  return {\n    topic: `operator/replies/${ctx.channel}`,\n    message: { conversation: ctx.conversation, ts: new Date().toISOString(), text, buttons },\n  };\n}\nfunction button(text, data) {\n  return { label: text, data };\n}\n// The next reply for a draft: ask for the first field still missing, or ask to confirm\nfunction prompt(draft) {\n  const lang = draft.lang;\n  const cancel = button(t('cancel_button', lang), { draft: draft.id, action: 'cancel' });\n  if (!draft.fields.intent) {\n    return reply(draft, t('which_intent', lang), [\n      ...Object.keys(INTENTS).map(k => button(label('intent', k, lang), { draft: draft.id, action: 'set', field: 'intent', value: k })),\n      cancel,\n    ]);\n  }\n  if (!draft.fields.asset) {\n    const keys = ASSET_GROUPS[draft.asset_hint] || Object.keys(ASSETS);\n    return reply(draft, t('which_asset', lang), [\n      ...keys.map(k => button(label('asset', k, lang), { draft: draft.id, action: 'set', field: 'asset', value: k })),\n      cancel,\n    ]);\n  }\n  const vars = { intent: label('intent', draft.fields.intent, lang), asset: label('asset', draft.fields.asset, lang) };\n  return reply(draft, t('confirm', lang, vars), [\n    button(t('confirm_button', lang), { draft: draft.id, action: 'confirm' }),\n    button(t('change_intent', lang), { draft: draft.id, action: 'change', field: 'intent' }),\n    button(t('change_asset', lang), { draft: draft.id, action: 'change', field: 'asset' }),\n    cancel,\n  ]);\n}\n\n// Drafts wait in the workflow's static data, which n8n keeps for active\n// (production) executions only\nconst store = $getWorkflowStaticData('global');\nstore.drafts = store.drafts || {};\nconst now = Date.now();\nfor (const [id, d] of Object.entries(store.drafts)) {\n  if (now - d.created > DRAFT_TTL_MS) delete store.drafts[id];\n}\n\nconst m = $json;\nconst out = { ...m, ask_system1: false, publish: [] };\n\nif (m.kind === 'invalid') return { json: out };\n\nif (m.kind === 'button') {\n  const b = m.button;\n  const draft = store.drafts[String(b.draft || '')];\n  const lang = draft ? draft.lang : m.lang || 'en';\n  if (!draft || draft.conversation !== m.conversation) {\n    out.publish.push(reply(m, t('expired', lang)));\n    return { json: out };\n  }\n  if (b.action === 'cancel') {\n    delete store.drafts[draft.id];\n    out.publish.push(reply(draft, t('cancelled', lang)));\n  } else if (b.action === 'change' && FIELDS.includes(b.field)) {\n    draft.fields[b.field] = null;\n    draft.asset_hint = null;\n    out.publish.push(prompt(draft));\n  } else if (b.action === 'set' && FIELDS.includes(b.field) && b.value in LABELS[b.field]) {\n    draft.fields[b.field] = b.value;\n    draft.by_operator[b.field] = true;\n    out.publish.push(prompt(draft));\n  } else if (b.action === 'confirm' && draft.fields.intent && draft.fields.asset) {\n    delete store.drafts[draft.id];\n    const f = draft.fields;\n    out.publish.push({\n      topic: `operator/requests/${f.intent}`,\n      message: {\n        id: draft.id,\n        ts: new Date().toISOString(),\n        intent: f.intent,\n        asset: f.asset,\n        text: draft.text,\n        channel: draft.channel,\n        conversation: draft.conversation,\n        user: draft.user,\n        // Which fields System 1 suggested and the operator kept\n        suggested: Object.fromEntries(FIELDS.map(k => [k, !draft.by_operator[k]])),\n      },\n    });\n    // What the operator confirmed, for each question System 1 answered: the\n    // dashboard's agreement rate, and evaluation examples when FEEDBACK_STATES\n    if (draft.decision) {\n      for (const q of FIELDS) {\n        const a = draft.decision.answers[q];\n        if (!a) continue;\n        out.publish.push({\n          topic: `system1/feedback/${SET}`,\n          message: {\n            id: draft.id,\n            ts: new Date().toISOString(),\n            set: SET,\n            set_version: draft.decision.set_version,\n            caller: CALLER,\n            question: q,\n            expected: f[q],\n            choice: a.choice,\n            abstain: a.abstain,\n            lang: draft.lang,\n            ...(FEEDBACK_STATES ? { state: { text: draft.text } } : {}),\n          },\n        });\n      }\n    }\n    out.publish.push(reply(draft, t('confirmed', lang, { intent: label('intent', f.intent, lang), asset: label('asset', f.asset, lang) })));\n  } else {\n    out.publish.push(prompt(draft));\n  }\n  return { json: out };\n}\n\n// A message. Rules first: empty messages and stickers get nothing, greetings\n// and thanks a canned reply, and only the rest reaches System 1.\nconst lang = m.lang || guessLang(m.text);\nout.lang = lang;\nconst plain = m.text.toLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, ' ').replace(/\\s+/g, ' ').trim();\nif (!plain) return { json: out };\nif (plain.length <= 40) {\n  let rest = ' ' + plain + ' ';\n  const phrases = [...GREETINGS.en, ...GREETINGS.es, ...THANKS.en, ...THANKS.es, ...FILLER]\n    .sort((a, b) => b.length - a.length);\n  for (const p of phrases) rest = rest.split(' ' + p + ' ').join(' ');\n  if (!rest.trim()) {\n    const thanks = [...THANKS.en, ...THANKS.es].some(p => (' ' + plain + ' ').includes(' ' + p + ' '));\n    out.publish.push(reply({ ...m, lang }, t(thanks ? 'thanks' : 'greeting', lang)));\n    return { json: out };\n  }\n}\nout.ask_system1 = true;\nout.asked_at = Date.now();\nout.config = { INTENTS, ASSETS, ASSET_GROUPS, REPLIES, no_answer: { intent: ['other'], asset: Object.keys(ASSET_GROUPS) } };\nreturn { json: out };\n"
+      },
+      "id": "oi-rules",
+      "name": "Intake Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-ask-system1",
+              "leftValue": "={{ $json.ask_system1 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "oi-ask",
+      "name": "Ask System 1?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://p4n4-system1:8000/v1/sets/operator-intake",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ state: { text: $json.text } }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "oi-system1",
+      "name": "System 1 Intake",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        200
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "p4n4-system1",
+          "name": "p4n4 System 1"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function uuid() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n    const r = Math.random() * 16 | 0;\n    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);\n  });\n}\n\n// The site config is edited in Intake Rules, which hands it on\nconst m = $('Intake Rules').item.json;\nconst { INTENTS, ASSETS, ASSET_GROUPS, REPLIES } = m.config;\n\nconst SET = 'operator-intake';\nconst CALLER = 'n8n-operator-intake';\nconst FIELDS = ['intent', 'asset'];\nconst LABELS = { intent: INTENTS, asset: ASSETS };\n\nfunction guessLang(text) {\n  const words = text.toLowerCase().match(/[a-záéíóúñü]+/g) || [];\n  const es = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'que', 'por', 'para', 'una', 'un', 'hay', 'está', 'esta', 'no', 'se', 'bomba', 'compresor', 'necesitamos', 'gracias', 'hola', 'buenos', 'buenas']);\n  const hits = words.filter(w => es.has(w)).length;\n  return hits > 0 && hits * 4 >= words.length || /[¿¡ñ]/.test(text) ? 'es' : 'en';\n}\nfunction t(key, lang, vars = {}) {\n  const s = REPLIES[key][lang] || REPLIES[key].en;\n  return s.replace(/\\{(\\w+)\\}/g, (_, k) => vars[k] ?? '');\n}\nfunction label(field, key, lang) {\n  const l = LABELS[field][key];\n  return l ? l[lang] || l.en : key;\n}\nfunction reply(ctx, text, buttons = []) {\n  return {\n    topic: `operator/replies/${ctx.channel}`,\n    message: { conversation: ctx.conversation, ts: new Date().toISOString(), text, buttons },\n  };\n}\nfunction button(text, data) {\n  return { label: text, data };\n}\n// The next reply for a draft: ask for the first field still missing, or ask to confirm\nfunction prompt(draft) {\n  const lang = draft.lang;\n  const cancel = button(t('cancel_button', lang), { draft: draft.id, action: 'cancel' });\n  if (!draft.fields.intent) {\n    return reply(draft, t('which_intent', lang), [\n      ...Object.keys(INTENTS).map(k => button(label('intent', k, lang), { draft: draft.id, action: 'set', field: 'intent', value: k })),\n      cancel,\n    ]);\n  }\n  if (!draft.fields.asset) {\n    const keys = ASSET_GROUPS[draft.asset_hint] || Object.keys(ASSETS);\n    return reply(draft, t('which_asset', lang), [\n      ...keys.map(k => button(label('asset', k, lang), { draft: draft.id, action: 'set', field: 'asset', value: k })),\n      cancel,\n    ]);\n  }\n  const vars = { intent: label('intent', draft.fields.intent, lang), asset: label('asset', draft.fields.asset, lang) };\n  return reply(draft, t('confirm', lang, vars), [\n    button(t('confirm_button', lang), { draft: draft.id, action: 'confirm' }),\n    button(t('change_intent', lang), { draft: draft.id, action: 'change', field: 'intent' }),\n    button(t('change_asset', lang), { draft: draft.id, action: 'change', field: 'asset' }),\n    cancel,\n  ]);\n}\n\n// System 1 suggests the request type and the asset. A suggestion is kept only\n// when it clears the set's threshold and isn't a no-answer key; anything\n// missing is asked with buttons, and every draft needs the operator's\n// confirmation (docs: decisions/system1.md §6.6). On an error, a timeout or a\n// 4xx the operator gets the buttons for everything.\nconst store = $getWorkflowStaticData('global');\nstore.drafts = store.drafts || {};\nconst res = $json;\nconst ok = res && res.answers && res.set;\nconst id = uuid();\nconst draft = {\n  id,\n  created: Date.now(),\n  channel: m.channel,\n  conversation: m.conversation,\n  user: m.user,\n  lang: m.lang,\n  text: m.text,\n  fields: { intent: null, asset: null },\n  by_operator: {},\n  asset_hint: null,\n  decision: null,\n};\nconst publish = [];\nif (ok) {\n  for (const q of FIELDS) {\n    const a = res.answers[q];\n    if (!a) continue;\n    if (!a.abstain && !m.config.no_answer[q].includes(a.choice) && a.choice in LABELS[q]) draft.fields[q] = a.choice;\n  }\n  const asset = res.answers.asset;\n  if (asset && asset.choice in ASSET_GROUPS) draft.asset_hint = asset.choice;\n  const snapshot = /\\/snapshots\\/([0-9a-f]{40})/.exec((res.routing || {}).repo || '');\n  draft.decision = {\n    id,\n    ts: new Date().toISOString(),\n    set: res.set.name,\n    set_version: res.set.version,\n    checkpoint: (res.routing || {}).model || '',\n    revision: snapshot ? snapshot[1].slice(0, 12) : '',\n    caller: CALLER,\n    subject: m.channel,\n    state_sha256: res.state_sha256 || '',\n    latency_ms: Date.now() - m.asked_at,\n    answers: Object.fromEntries(Object.entries(res.answers).map(([q, a]) => [q, { choice: a.choice, confidence: a.confidence, abstain: a.abstain }])),\n    used: FIELDS.some(q => draft.fields[q]),\n  };\n  publish.push({ topic: `system1/decisions/${SET}`, message: draft.decision });\n}\nstore.drafts[id] = draft;\npublish.push(prompt(draft));\nreturn {\n  json: {\n    channel: m.channel,\n    conversation: m.conversation,\n    draft: id,\n    system1: ok ? { asked: true, used: draft.decision.used } : { asked: true, used: false, error: String((res.error || {}).message || 'request failed').slice(0, 200) },\n    publish,\n  },\n};\n"
+      },
+      "id": "oi-draft",
+      "name": "Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One MQTT message per entry of each item's `publish` list\nreturn $input.all().flatMap(item => (item.json.publish || []).map(p => ({ json: p })));\n"
+      },
+      "id": "oi-split",
+      "name": "Split Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "topic": "={{ $json.topic }}",
+        "sendInputData": false,
+        "message": "={{ JSON.stringify($json.message) }}",
+        "options": {
+          "qos": 1,
+          "retain": false
+        }
+      },
+      "id": "oi-publish",
+      "name": "Publish",
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        300
+      ],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Operator Intake\nChat messages become a draft request the operator confirms.\n\n1. A channel adapter publishes `{conversation, user, text}` on `operator/messages/<channel>`, or POSTs it with a `channel` to the webhook (Header Auth credential **p4n4 Operator Intake**). Replies, with buttons, go to `operator/replies/<channel>`; a button press comes back as `{conversation, button}`.\n2. **Intake Rules** answer greetings and thanks. Edit the site config there: assets, labels, greetings.\n3. **System 1** (profile `system1`, set `operator-intake`) suggests the request type and the asset; whatever it can't tell is asked with buttons.\n4. Nothing happens until the operator confirms. Then the request goes to `operator/requests/<intent>`, and the confirmation to `system1/feedback/operator-intake`.",
+        "height": 340,
+        "width": 460
+      },
+      "id": "oi-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -200
+      ]
+    }
+  ],
+  "connections": {
+    "MQTT Operator Message": {
+      "main": [
+        [
+          {
+            "node": "Normalise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Operator Message": {
+      "main": [
+        [
+          {
+            "node": "Normalise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise": {
+      "main": [
+        [
+          {
+            "node": "Intake Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intake Rules": {
+      "main": [
+        [
+          {
+            "node": "Ask System 1?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask System 1?": {
+      "main": [
+        [
+          {
+            "node": "System 1 Intake",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "System 1 Intake": {
+      "main": [
+        [
+          {
+            "node": "Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft": {
+      "main": [
+        [
+          {
+            "node": "Split Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Messages": {
+      "main": [
+        [
+          {
+            "node": "Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7d2b9e41-0c6a-4f3e-8b15-a94e6c0d2f78",
+  "tags": [
+    {
+      "id": "p4n4tag-p4n4",
+      "name": "p4n4"
+    },
+    {
+      "id": "p4n4tag-system1",
+      "name": "system1"
+    },
+    {
+      "id": "p4n4tag-mqtt",
+      "name": "mqtt"
+    },
+    {
+      "id": "p4n4tag-operators",
+      "name": "operators"
+    }
+  ]
+}

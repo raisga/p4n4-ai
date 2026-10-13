@@ -18,6 +18,7 @@ Part of the [p4n4](https://github.com/raisga/p4n4) platform — an EdgeAI + GenA
 - [Getting Started](#getting-started)
 - [Choosing Services](#choosing-services)
 - [Project Structure](#project-structure)
+- [System 1](#system-1)
 - [Ollama Models](#ollama-models)
 - [n8n Workflows](#n8n-workflows)
 - [GPU Support](#gpu-support)
@@ -56,6 +57,7 @@ Part of the [p4n4](https://github.com/raisga/p4n4) platform — an EdgeAI + GenA
 |---------|------|-------------|
 | **[Ollama](https://ollama.com/)** | Local LLM Runtime | Runs open-weight models (Llama, Mistral, Phi, etc.) entirely on-device with zero data egress. Exposes an OpenAI-compatible REST API on port 11434. |
 | **[Letta](https://letta.com/)** *(optional)* | AI Agent Framework | Stateful AI agent framework with persistent memory (formerly MemGPT). Build agents that remember context across sessions and reason over long-term IoT event histories. |
+| **System 1** *(optional)* | Fast Typed Decisions | [laya](https://huggingface.co/convaiinnovations/laya), a small encoder that picks one option from a closed menu in a fraction of a second on the CPU. Advisory routing for n8n and Node-RED: rules decide, System 1 routes, the LLM explains. No host port. See [System 1](#system-1). |
 | **[n8n](https://n8n.io/)** *(optional)* | Workflow Automation | Low-code, node-based workflow engine. Connects MQTT, InfluxDB, Ollama, Letta, and external APIs without custom glue code. Includes four starter IoT + AI workflows. |
 
 ---
@@ -128,6 +130,9 @@ COMPOSE_PROFILES=ollama
 
 # Ollama with Letta agents and n8n workflows
 COMPOSE_PROFILES=ollama,letta,n8n
+
+# Plus System 1 (needs SYSTEM1_API_KEY and `make system1-pull` first)
+COMPOSE_PROFILES=ollama,letta,n8n,system1
 ```
 
 Run `docker compose up -d --remove-orphans` after changing it. `make start SERVICE=<name>` starts any service, whether or not it is listed, and `make down` stops them all. If `.env` has no `COMPOSE_PROFILES` line, plain `docker compose up` starts nothing; the `make` targets fall back to Ollama.
@@ -147,17 +152,52 @@ p4n4-ai/
 │   ├── ollama/                         # Ollama config (models pulled at runtime)
 │   ├── letta/
 │   │   └── letta.conf                  # Letta server configuration reference
-│   └── n8n/
-│       └── workflows/
-│           ├── alert-enrichment.json   # Enrich MQTT alerts with LLM analysis
-│           ├── scheduled-digest.json   # Hourly telemetry summary via Ollama
-│           ├── device-onboarding.json  # Auto-register new MQTT devices
-│           └── incident-escalation.json # Classify and escalate critical alerts
+│   ├── n8n/
+│   │   └── workflows/
+│   │       ├── alert-enrichment.json   # Enrich MQTT alerts with LLM analysis
+│   │       ├── scheduled-digest.json   # Hourly telemetry summary via Ollama
+│   │       ├── device-onboarding.json  # Auto-register new MQTT devices
+│   │       ├── incident-escalation.json # Rules, System 1 suggestion, escalate every alert
+│   │       └── operator-intake.json    # Chat messages to confirmed requests, with System 1
+│   └── system1/questions/
+│       ├── incident-triage.json        # Question set: likely cause of a critical alert
+│       ├── incident-triage.eval.jsonl  # Its evaluation examples and gates' input
+│       ├── operator-intake.json        # Question set: request type and asset of a message
+│       └── operator-intake.eval.jsonl  # Its examples, in English and Spanish
+├── system1/                            # System 1 image: Dockerfile, wrapper, hash pins, locks, tests
 └── scripts/
     ├── pull-models.sh                  # Helper to pull models into Ollama
     ├── selector.sh                     # Interactive service selector
     └── check_env_example.py            # CI: .env.example completeness check
 ```
+
+---
+
+## System 1
+
+System 1 runs laya behind a hardened wrapper (`system1/system1_app.py`): one checkpoint,
+pinned by commit and by the sha256 of every file, served offline, with a required bearer
+key and no silent truncation. It answers server-side question sets in
+`config/system1/questions/` and abstains when unsure. Nothing safety-related depends on
+it, and every workflow works the same without it. Two sets ship: `incident-triage` for
+Incident Escalation and `operator-intake` for Operator Intake; `GET /v1/sets` lists what
+the service loaded, and a set's `temperatures` key calibrates single questions.
+
+```bash
+p4n4 ai system1 enable          # with the p4n4 CLI: key, profile, model, n8n credential
+
+# or by hand:
+echo "SYSTEM1_API_KEY=$(openssl rand -hex 32)" >> .env   # and add system1 to COMPOSE_PROFILES
+make system1-pull               # download and verify the pinned checkpoint
+docker compose up -d
+```
+
+Until the first image release, build it locally (`make system1-build`) and set
+`SYSTEM1_IMAGE=p4n4-system1:dev`. `make system1-test` runs the regression suite against
+it, and `make system1-lock` recompiles the hashed dependency locks. The design, the
+measurements and the rules of use are in p4n4-docs:
+[System 1](https://github.com/raisga/p4n4-docs/blob/main/decisions/system1.md) and the
+[AI stack page](https://github.com/raisga/p4n4-docs/blob/main/stacks/ai-stack.md#system-1-typed-decisions).
 
 ---
 
@@ -200,10 +240,10 @@ docker exec p4n4-ollama ollama list
 
 ## n8n Workflows
 
-Four starter workflows are included in `config/n8n/workflows/`. Import them via the n8n UI:
+Five starter workflows are included in `config/n8n/workflows/`. Import them via the n8n UI:
 
 1. Open n8n at <http://localhost:5678>
-2. Create the two credentials below
+2. Create the credentials below
 3. Go to **Workflows → Import from File** and select a JSON file from `config/n8n/workflows/`
 4. Publish (activate) each imported workflow
 
@@ -212,7 +252,7 @@ Or import them all from the command line, then publish them and restart n8n:
 ```bash
 docker cp config/n8n/workflows p4n4-n8n:/tmp/workflows
 docker exec p4n4-n8n n8n import:workflow --separate --input=/tmp/workflows
-for id in p4n4AlertEnrichment p4n4DeviceOnboarding p4n4IncidentEscalation p4n4ScheduledDigest; do
+for id in p4n4AlertEnrichment p4n4DeviceOnboarding p4n4IncidentEscalation p4n4OperatorIntake p4n4ScheduledDigest; do
   docker exec p4n4-n8n n8n publish:workflow --id=$id
 done
 docker restart p4n4-n8n
@@ -225,14 +265,16 @@ The workflows have fixed IDs, so importing them again updates them instead of ad
 | `alert-enrichment.json` | Subscribes to `inference/+/result` MQTT topics; sends low-confidence results to Ollama for analysis |
 | `scheduled-digest.json` | Runs hourly; queries InfluxDB for recent telemetry and generates a natural-language summary via Ollama |
 | `device-onboarding.json` | Listens on `devices/+/register`; auto-registers new devices and publishes a confirmation to MQTT |
-| `incident-escalation.json` | Listens on `alerts/+/critical`; classifies severity via Ollama and publishes enriched alert to `alerts/escalated` |
+| `incident-escalation.json` | Listens on `alerts/+/critical`; site rules route known alerts, [System 1](#system-1) may suggest a team for the rest, every alert goes to `alerts/escalated` with the on-call recipient, and Ollama's summary follows on `alerts/escalated/summary` |
+| `operator-intake.json` | Operators' chat messages, from `operator/messages/<channel>` or a token-protected webhook, become draft requests: rules answer greetings, [System 1](#system-1) suggests the request type and the asset, buttons ask for the rest, and nothing happens until the operator confirms. Replies go to `operator/replies/<channel>`, confirmed requests to `operator/requests/<intent>`, confirmations to `system1/feedback/operator-intake` |
 
 ### Credentials and Settings in n8n
 
-The workflows use two credentials, matched by name:
+The workflows use these credentials, matched by name:
 
 - **`p4n4 MQTT`** (type MQTT): host `p4n4-mqtt` *(service name on p4n4-net)*, port `1883`, and the username and password from your p4n4-iot `.env` if the broker requires them.
 - **`p4n4 InfluxDB`** (type Header Auth, used by the Scheduled Digest): name `Authorization`, value `Token <INFLUXDB_TOKEN>` with the token from this stack's `.env`.
+- **`p4n4 System 1`** and **`p4n4 Operator Intake`** (type Header Auth, used by Incident Escalation and Operator Intake): name `Authorization`, value `Bearer <SYSTEM1_API_KEY>` and `Bearer <OPERATOR_INTAKE_TOKEN>`. `p4n4 ai system1 enable` creates both, and `p4n4 secret rotate` updates them.
 
 The Scheduled Digest's **Settings** node holds the InfluxDB org and bucket it queries (`ming` and `raw_telemetry`, the platform defaults). If your project uses another `INFLUXDB_ORG`, change it there. The workflows don't read `.env` through `$env`: n8n blocks that by default.
 
@@ -309,6 +351,7 @@ docker run --rm --network p4n4-net curlimages/curl \
 | Ollama API | `11434` (`OLLAMA_PORT`), on `127.0.0.1` (`OLLAMA_BIND`) | <http://localhost:11434> |
 | Letta Server | `8283`, on `127.0.0.1` (`LETTA_BIND`) | <http://localhost:8283> |
 | n8n UI | `5678` | <http://localhost:5678> |
+| System 1 | None | `http://p4n4-system1:8000` on `p4n4-net` |
 
 ---
 

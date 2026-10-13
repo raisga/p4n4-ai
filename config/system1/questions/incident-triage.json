@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "description": "Probable cause of an alert on alerts/<device>/critical, used to suggest a team when no site rule routes it. Severity is not asked: it comes from the topic and site rules. State: {alert}, the alert's first line, at most 500 characters. Add a field only when the evaluation shows it helps, and never the device name: it acts as a prior. The threshold and the coverage gate are fitted to the generic evaluation file, where the model is often confidently wrong below 0.9; a site refits both on its own examples (p4n4 ai system1 eval --fit-thresholds).",
+  "questions": {
+    "cause": {
+      "type": "choice",
+      "instructions": "What is the most likely cause of the alert?",
+      "criteria": {
+        "thermal": "overheating, temperature above its limit, cooling failure",
+        "mechanical": "vibration, wear, leak, crack, blockage, broken part",
+        "electrical": "power loss, voltage, current, fuse, relay, motor drive",
+        "connectivity": "device offline, timeouts, refused connections, network or broker down",
+        "sensor_fault": "implausible, stuck or missing readings, low battery, calibration drift",
+        "process": "setpoint, recipe, material or operator action",
+        "unknown": "cannot tell from the alert"
+      }
+    }
+  },
+  "thresholds": {
+    "cause": 0.9
+  },
+  "threshold_on": "confidence",
+  "eval": {
+    "min_examples": 50,
+    "no_answer_keys": {
+      "cause": [
+        "unknown"
+      ]
+    },
+    "gates": {
+      "cause": {
+        "min_coverage": 0.25,
+        "min_answered_accuracy": 0.9,
+        "max_confident_wrong": 0.03
+      }
+    }
+  }
+}

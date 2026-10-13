@@ -1,0 +1,64 @@
+{"state": {"text": "Pump 3 has been making a grinding noise since this morning and the pressure keeps dropping."}, "expect": {"intent": "report_fault", "asset": "pump-3"}, "source": "generic", "lang": "en"}
+{"state": {"text": "There's water leaking under pump 1."}, "expect": {"intent": "report_fault", "asset": "pump-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "The compressor tripped again, it won't restart."}, "expect": {"intent": "report_fault", "asset": "compressor-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Pump 2 is vibrating a lot more than usual."}, "expect": {"intent": "report_fault", "asset": "pump-2"}, "source": "generic", "lang": "en"}
+{"state": {"text": "The air compressor is overheating, the casing is too hot to touch."}, "expect": {"intent": "report_fault", "asset": "compressor-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Pump 1 stopped by itself twenty minutes ago."}, "expect": {"intent": "report_fault", "asset": "pump-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Smell of burning near pump 2."}, "expect": {"intent": "report_fault", "asset": "pump-2"}, "source": "generic", "lang": "en"}
+{"state": {"text": "The pump is leaking oil."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "en"}
+{"state": {"text": "One of the pumps is making a loud knocking sound."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "en"}
+{"state": {"text": "The compressor keeps cycling on and off every few seconds."}, "expect": {"intent": "report_fault", "asset": "compressor-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "The pump on the left is making noise."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "en"}
+{"state": {"text": "La bomba 3 hace un ruido raro desde esta mañana y la presión está bajando."}, "expect": {"intent": "report_fault", "asset": "pump-3"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Hay una fuga de agua en la bomba 2."}, "expect": {"intent": "report_fault", "asset": "pump-2"}, "source": "generic", "lang": "es"}
+{"state": {"text": "El compresor se apagó solo y no vuelve a arrancar."}, "expect": {"intent": "report_fault", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "La bomba 1 vibra mucho más de lo normal."}, "expect": {"intent": "report_fault", "asset": "pump-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "La bomba no da presión."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "Sale humo del compresor."}, "expect": {"intent": "report_fault", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Una de las bombas está goteando aceite."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "La bomba 3 se calienta demasiado."}, "expect": {"intent": "report_fault", "asset": "pump-3"}, "source": "generic", "lang": "es"}
+{"state": {"text": "La bomba 2 se disparó otra vez."}, "expect": {"intent": "report_fault", "asset": "pump-2"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Se rompió el sello de la bomba."}, "expect": {"intent": "report_fault", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "What's the current pressure on pump 2?"}, "expect": {"intent": "status_request", "asset": "pump-2"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Is pump 1 running right now?"}, "expect": {"intent": "status_request", "asset": "pump-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "How hot is the compressor at the moment?"}, "expect": {"intent": "status_request", "asset": "compressor-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Can you tell me the flow rate of pump 3?"}, "expect": {"intent": "status_request", "asset": "pump-3"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Are all the machines running normally?"}, "expect": {"intent": "status_request", "asset": "none"}, "source": "generic", "lang": "en"}
+{"state": {"text": "What's the status of the pump?"}, "expect": {"intent": "status_request", "asset": null}, "source": "generic", "lang": "en"}
+{"state": {"text": "How is the plant doing today?"}, "expect": {"intent": "status_request", "asset": "none"}, "source": "generic", "lang": "en"}
+{"state": {"text": "¿Cuál es la presión de la bomba 1 ahora mismo?"}, "expect": {"intent": "status_request", "asset": "pump-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Está funcionando el compresor?"}, "expect": {"intent": "status_request", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Qué temperatura tiene la bomba 3?"}, "expect": {"intent": "status_request", "asset": "pump-3"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Cómo está la bomba 2?"}, "expect": {"intent": "status_request", "asset": "pump-2"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Todo está funcionando bien en la planta?"}, "expect": {"intent": "status_request", "asset": "none"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Cómo va la bomba?"}, "expect": {"intent": "status_request", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "Dame la lectura de presión del compresor."}, "expect": {"intent": "status_request", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿La bomba está encendida?"}, "expect": {"intent": "status_request", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "Please schedule maintenance for pump 1 next week."}, "expect": {"intent": "maintenance_request", "asset": "pump-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "We need a new filter for the compressor."}, "expect": {"intent": "maintenance_request", "asset": "compressor-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Can someone come and check pump 3 tomorrow?"}, "expect": {"intent": "maintenance_request", "asset": "pump-3"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Pump 2 is due for its oil change, can you book it?"}, "expect": {"intent": "maintenance_request", "asset": "pump-2"}, "source": "generic", "lang": "en"}
+{"state": {"text": "We need a technician to visit the site this week."}, "expect": {"intent": "maintenance_request", "asset": "none"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Order spare seals for the pump."}, "expect": {"intent": "maintenance_request", "asset": null}, "source": "generic", "lang": "en"}
+{"state": {"text": "Please send someone to grease the bearings on pump 1."}, "expect": {"intent": "maintenance_request", "asset": "pump-1"}, "source": "generic", "lang": "en"}
+{"state": {"text": "Por favor programen el mantenimiento de la bomba 2."}, "expect": {"intent": "maintenance_request", "asset": "pump-2"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Necesitamos un repuesto para el compresor."}, "expect": {"intent": "maintenance_request", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "¿Puede venir un técnico a revisar la bomba 3 mañana?"}, "expect": {"intent": "maintenance_request", "asset": "pump-3"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Hay que cambiar el aceite del compresor esta semana."}, "expect": {"intent": "maintenance_request", "asset": "compressor-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Necesitamos que venga alguien a la planta el lunes."}, "expect": {"intent": "maintenance_request", "asset": "none"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Pidan juntas nuevas para la bomba."}, "expect": {"intent": "maintenance_request", "asset": null}, "source": "generic", "lang": "es"}
+{"state": {"text": "La bomba 1 necesita mantenimiento preventivo."}, "expect": {"intent": "maintenance_request", "asset": "pump-1"}, "source": "generic", "lang": "es"}
+{"state": {"text": "Thanks, all good now."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "Gracias, ya quedó todo bien."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}
+{"state": {"text": "Good morning team, have a nice shift!"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "Buenos días a todos, buen turno."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}
+{"state": {"text": "ok"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "Perfecto, muchas gracias por la ayuda."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}
+{"state": {"text": "Who's bringing lunch today?"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "¿Alguien sabe a qué hora es la reunión?"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}
+{"state": {"text": "Happy birthday to the night shift!"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "Nos vemos mañana."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}
+{"state": {"text": "Lorem ipsum dolor sit amet."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "👍"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "The weather is terrible today."}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "en"}
+{"state": {"text": "¡Qué calor hace hoy!"}, "expect": {"intent": null, "asset": "none"}, "source": "edge", "lang": "es"}

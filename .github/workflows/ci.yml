@@ -29,3 +29,16 @@ jobs:
             python3 -m json.tool "$f" > /dev/null || { echo "::error file=$f::invalid JSON"; exit 1; }
             echo "OK: $f"
           done
+
+      # Budgets need the tokenizer, so the System 1 image workflow checks those
+      - name: Validate System 1 question sets
+        run: |
+          for f in config/system1/questions/*.json; do
+            python3 -m json.tool "$f" > /dev/null || { echo "::error file=$f::invalid JSON"; exit 1; }
+            echo "OK: $f"
+          done
+          for f in config/system1/questions/*.eval.jsonl; do
+            python3 -c 'import json, sys; [json.loads(l) for l in open(sys.argv[1]) if l.strip()]' "$f" \
+              || { echo "::error file=$f::invalid JSON line"; exit 1; }
+            echo "OK: $f"
+          done

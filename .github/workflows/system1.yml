@@ -1,0 +1,138 @@
+name: System 1 image
+
+# Builds the laya image natively on amd64 and arm64, runs the regression suite (which also
+# checks every shipped question set against its gates) on each, and on a system1-v* tag
+# publishes ghcr.io/raisga/p4n4-system1 with an SBOM and provenance.
+
+on:
+  push:
+    branches: [main]
+    tags: ["system1-v*"]
+    paths:
+      - "system1/**"
+      - "config/system1/**"
+      - ".github/workflows/system1.yml"
+  pull_request:
+    paths:
+      - "system1/**"
+      - "config/system1/**"
+      - ".github/workflows/system1.yml"
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/raisga/p4n4-system1
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: system1
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: p4n4-system1:test
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # p4n4-lib scores the shipped sets' evaluation files
+      - run: pip install pytest "p4n4-lib @ git+https://github.com/raisga/p4n4-lib.git"
+
+      - name: Regression suite
+        run: make system1-test SYSTEM1_DEV_IMAGE=p4n4-system1:test
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/system1-v')
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: system1
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  manifest:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the multi-arch tag
+        working-directory: /tmp/digests
+        run: |
+          version="${GITHUB_REF_NAME#system1-v}"
+          docker buildx imagetools create -t "$IMAGE:$version" \
+            $(printf "$IMAGE@sha256:%s " *)
+          docker buildx imagetools inspect "$IMAGE:$version"

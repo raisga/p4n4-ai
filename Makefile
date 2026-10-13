@@ -3,7 +3,7 @@
 # ==============================================================================
 
 .PHONY: help up down restart logs ps clean pull status interactive start stop \
-        models pull-models test-ollama
+        models pull-models test-ollama system1-pull system1-build system1-lock system1-test
 
 # Colors
 GREEN  := \033[0;32m
@@ -15,7 +15,7 @@ DIM    := \033[2m
 NC     := \033[0m
 
 # Service list
-AI_SERVICES := ollama letta n8n
+AI_SERVICES := ollama letta n8n system1
 
 # Each service is in a Compose profile of the same name. Started when neither
 # the environment nor .env sets COMPOSE_PROFILES:
@@ -51,6 +51,12 @@ help:
 	@printf "  $(BOLD)Ollama:$(NC)\n"
 	@printf "    $(GREEN)make models$(NC)          List downloaded models\n"
 	@printf "    $(GREEN)make pull-models$(NC)     Pull default models (llama3.2)\n"
+	@echo ""
+	@printf "  $(BOLD)System 1 (laya):$(NC)\n"
+	@printf "    $(GREEN)make system1-pull$(NC)    Download the pinned checkpoint\n"
+	@printf "    $(GREEN)make system1-build$(NC)   Build the image locally (p4n4-system1:dev)\n"
+	@printf "    $(GREEN)make system1-lock$(NC)    Recompile the hashed dependency locks\n"
+	@printf "    $(GREEN)make system1-test$(NC)    Run the regression suite against the image\n"
 	@echo ""
 	@printf "  $(BOLD)Testing:$(NC)\n"
 	@printf "    $(GREEN)make test-ollama$(NC)     Send a test prompt to Ollama\n"
@@ -113,13 +119,14 @@ status:
 	@echo "  ════════════════════════════════════════════════════════════════════"
 	@printf "  $(BOLD)%-14s %-12s %-8s %s$(NC)\n" "SERVICE" "STATUS" "PORT" "URL"
 	@printf "  $(DIM)%-14s %-12s %-8s %s$(NC)\n" "─────────────" "──────────" "──────" "───────────────────────────"
-	@for svc in ollama letta n8n; do \
+	@for svc in ollama letta n8n system1; do \
 		container="p4n4-$$svc"; \
 		state=$$(docker inspect --format='{{.State.Status}}' $$container 2>/dev/null || echo "stopped"); \
 		case $$svc in \
 			ollama)  port="11434"; url="http://localhost:11434" ;; \
 			letta)   port="8283";  url="http://localhost:8283" ;; \
 			n8n)     port="5678";  url="http://localhost:5678" ;; \
+			system1) port="-";     url="p4n4-system1:8000 (p4n4-net only)" ;; \
 		esac; \
 		if [ "$$state" = "running" ]; then \
 			printf "  $(BOLD)%-14s$(NC) $(GREEN)%-12s$(NC) %-8s %s\n" "$$svc" "running" "$$port" "$$url"; \
@@ -144,16 +151,18 @@ interactive:
 deps_ollama :=
 deps_letta :=
 deps_n8n :=
+deps_system1 :=
 
 # Reverse deps (what breaks)
 rdeps_ollama :=
 rdeps_letta :=
 rdeps_n8n :=
+rdeps_system1 :=
 
 start:
 ifndef SERVICE
 	@printf "$(RED)  Usage: make start SERVICE=<name>$(NC)\n"
-	@printf "  Available: $(BOLD)ollama letta n8n$(NC)\n"
+	@printf "  Available: $(BOLD)ollama letta n8n system1$(NC)\n"
 	@exit 1
 endif
 	@deps="$(deps_$(SERVICE))"; \
@@ -168,7 +177,7 @@ endif
 stop:
 ifndef SERVICE
 	@printf "$(RED)  Usage: make stop SERVICE=<name>$(NC)\n"
-	@printf "  Available: $(BOLD)ollama letta n8n$(NC)\n"
+	@printf "  Available: $(BOLD)ollama letta n8n system1$(NC)\n"
 	@exit 1
 endif
 	@rdeps="$(rdeps_$(SERVICE))"; \
@@ -208,3 +217,36 @@ test-ollama:
 		-d '{"model":"llama3.2","prompt":"Reply with one word: healthy","stream":false}' \
 		| python3 -c "import sys,json; d=json.load(sys.stdin); print('  Response:', d.get('response','').strip())" \
 		2>/dev/null || printf "$(RED)  Ollama is not running or no models loaded. Run: make pull-models$(NC)\n"
+
+# ------------------------------------------------------------------------------
+# System 1 (laya)
+# ------------------------------------------------------------------------------
+
+SYSTEM1_DEV_IMAGE ?= p4n4-system1:dev
+SYSTEM1_TEST_MODELS ?= system1-test-models
+SYSTEM1_LOCK_FLAGS := -c constraints.txt --generate-hashes --python-version 3.12 \
+	--index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu \
+	--index-strategy unsafe-best-match --no-header --emit-index-url
+
+system1-pull:
+	docker compose run --rm system1-pull
+
+system1-build:
+	docker build -t $(SYSTEM1_DEV_IMAGE) system1
+
+# Needs uv. Read the laya diff before bumping it (docs: decisions/system1.md, rule 13)
+system1-lock:
+	cd system1 && uv pip compile requirements.in $(SYSTEM1_LOCK_FLAGS) \
+		--python-platform x86_64-manylinux_2_28 -o requirements-amd64.txt
+	cd system1 && uv pip compile requirements.in $(SYSTEM1_LOCK_FLAGS) \
+		--python-platform aarch64-manylinux_2_28 -o requirements-arm64.txt
+
+# Fills a test volume as the service user, then runs the suite (needs pytest; with
+# p4n4-lib installed it also checks every shipped set against its gates)
+system1-test:
+	docker volume create $(SYSTEM1_TEST_MODELS) >/dev/null
+	docker run --rm --user 10001:10001 -e HF_HUB_OFFLINE=0 \
+		-e SYSTEM1_REVISION=$$(grep -m1 '^SYSTEM1_REVISION=' .env.example | cut -d= -f2) \
+		-v $(SYSTEM1_TEST_MODELS):/models $(SYSTEM1_DEV_IMAGE) python /app/system1_app.py pull
+	SYSTEM1_TEST_IMAGE=$(SYSTEM1_DEV_IMAGE) SYSTEM1_TEST_MODELS=$(SYSTEM1_TEST_MODELS) \
+		python3 -m pytest -q system1/tests
