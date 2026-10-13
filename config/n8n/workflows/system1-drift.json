@@ -1,0 +1,128 @@
+{
+  "id": "p4n4System1Drift",
+  "name": "System 1 Drift",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "system1-drift",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "sd-webhook",
+      "name": "Grafana Drift Alert",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "p4n4-system1-drift",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "p4n4-system1-alerts",
+          "name": "p4n4 System 1 Alerts"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One message per alert in Grafana's webhook payload, on system1/drift/<set>.\n// Labels outside the question sets' menus are dropped: they would be free text.\nconst TAG = /^[a-z0-9_-]{1,64}$/;\nconst body = $json.body && typeof $json.body === 'object' ? $json.body : {};\nconst alerts = Array.isArray(body.alerts) ? body.alerts : [];\nconst out = [];\nfor (const a of alerts) {\n  const labels = a.labels || {};\n  if (!TAG.test(String(labels.set || '')) || !TAG.test(String(labels.question || ''))) continue;\n  const values = a.values || {};\n  out.push({\n    json: {\n      topic: `system1/drift/${labels.set}`,\n      message: {\n        ts: new Date().toISOString(),\n        set: labels.set,\n        question: labels.question,\n        signal: labels.signal || '',\n        status: a.status === 'resolved' ? 'resolved' : 'firing',\n        value: typeof values.B === 'number' ? values.B : null,\n        summary: String((a.annotations || {}).summary || '').slice(0, 300),\n        starts_at: a.startsAt || null,\n        ends_at: a.status === 'resolved' ? a.endsAt || null : null,\n        fingerprint: String(a.fingerprint || ''),\n        // A drift alert asks for a new evaluation, never changes anything itself\n        action: 'Run p4n4 ai system1 eval ' + labels.set + ' with recent feedback',\n      },\n    },\n  });\n}\nreturn out;\n"
+      },
+      "id": "sd-split",
+      "name": "One Message per Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "topic": "={{ $json.topic }}",
+        "sendInputData": false,
+        "message": "={{ JSON.stringify($json.message) }}",
+        "options": {
+          "qos": 1,
+          "retain": false
+        }
+      },
+      "id": "sd-publish",
+      "name": "Publish Drift",
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [
+        480,
+        200
+      ],
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "p4n4 MQTT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## System 1 Drift\nGrafana's System 1 drift alerts (iot stack, `provisioning/alerting/system1.yml`) arrive here, authenticated with the **p4n4 System 1 Alerts** credential (`Bearer <SYSTEM1_ALERT_TOKEN>`).\n\nEach alert, firing or resolved, is published on `system1/drift/<set>`. A drift alert asks for `p4n4 ai system1 eval` with recent feedback; it never changes a set or a threshold.",
+        "height": 220,
+        "width": 420
+      },
+      "id": "sd-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "Grafana Drift Alert": {
+      "main": [
+        [
+          {
+            "node": "One Message per Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One Message per Alert": {
+      "main": [
+        [
+          {
+            "node": "Publish Drift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4a8e2c61-93d7-4b0f-a5e2-6c1f0b3d9e27",
+  "tags": [
+    {
+      "id": "p4n4tag-p4n4",
+      "name": "p4n4"
+    },
+    {
+      "id": "p4n4tag-system1",
+      "name": "system1"
+    },
+    {
+      "id": "p4n4tag-mqtt",
+      "name": "mqtt"
+    }
+  ]
+}

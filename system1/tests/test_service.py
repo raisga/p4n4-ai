@@ -156,6 +156,8 @@ def test_refuses_modified_checkpoint_files(tmp_path, file):
 
 def test_refuses_bad_calibration(tmp_path):
     start_fails("cannot read the calibration file", env={"SYSTEM1_CALIBRATION": "/nope.json"})
+    # A bare name is a file in the calibration directory Compose mounts
+    start_fails("/config/calibration/site.json", env={"SYSTEM1_CALIBRATION": "site.json"})
     cal = tmp_path / "cal.json"
     for bad in ({"choice:7": 1.2}, {"choice:2": 9}, {"choice:2": True}):
         cal.write_text(json.dumps(bad))

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "questions": {
+    "worth": {
+      "type": "choice",
+      "instructions": "Does this window need a person to understand it?",
+      "criteria": {
+        "explain": "unusual: a sudden change, a steady drift, stuck or impossible values, readings that disagree",
+        "routine": "expected: a daily cycle, a single short spike, noise, a planned event"
+      }
+    }
+  },
+  "description": "DRAFT, not shipped: it fails its gates on the base checkpoints (system1.md §16). A summary of an anomaly window, ranked by the probability of `explain`; never a gate. State: {window}.",
+  "eval": {
+    "min_examples": 50,
+    "rank": {
+      "worth": "explain"
+    }
+  }
+}

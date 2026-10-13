@@ -1,0 +1,61 @@
+{"state": {"readings": "temperature °C, humidity %RH"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "co2 ppm, temperature °C, humidity %"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "air_pressure hPa, temperature °C"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "illuminance lux, temperature °C"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "pm2_5 µg/m³, pm10 µg/m³, temperature °C"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "soil_moisture %, soil_temperature °C"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "dew_point °C, humidity %RH, temperature °C, battery V"}, "expect": {"device_type": "environment"}, "source": "generic"}
+{"state": {"readings": "voltage V, current A, power W"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "energy kWh, power W, power_factor"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "voltage_l1 V, voltage_l2 V, voltage_l3 V, current_l1 A"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "active_power kW, reactive_power kvar, frequency Hz"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "battery_soc %, charge_current A, pv_power W"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "meter_reading kWh"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "apparent_power VA, current A"}, "expect": {"device_type": "energy"}, "source": "generic"}
+{"state": {"readings": "vibration_rms mm/s, temperature °C"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "acceleration_x g, acceleration_y g, acceleration_z g"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "velocity_rms mm/s, peak_frequency Hz"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "crest_factor, kurtosis, acceleration_rms g"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "bearing_temperature °C, vibration_velocity mm/s"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "spectrum_band_1 g, spectrum_band_2 g, spectrum_band_3 g"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "displacement µm, rpm"}, "expect": {"device_type": "vibration"}, "source": "generic"}
+{"state": {"readings": "flow_rate L/min, pressure bar"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "pressure psi"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "flow m³/h, total_volume m³"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "inlet_pressure bar, outlet_pressure bar, differential_pressure mbar"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "water_flow L/s, water_temperature °C"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "gas_flow Nm³/h, line_pressure kPa"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "pump_discharge_pressure bar, suction_pressure bar"}, "expect": {"device_type": "flow_pressure"}, "source": "generic"}
+{"state": {"readings": "tank_level %, distance cm"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "fill_level %"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "water_level m, battery V"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "distance_to_surface mm"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "silo_level t, silo_level %"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "level_switch_high, level_switch_low"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "liquid_height cm, volume L"}, "expect": {"device_type": "level"}, "source": "generic"}
+{"state": {"readings": "latitude °, longitude °, speed km/h"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "lat, lon, altitude m, heading °"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "gps_fix, satellites, hdop"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "latitude, longitude, odometer km, ignition"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "position_lat, position_lon, battery %"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "speed km/h, heading °, latitude, longitude"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "geofence_inside, latitude, longitude"}, "expect": {"device_type": "location"}, "source": "generic"}
+{"state": {"readings": "label, confidence, bounding_boxes"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "person_count, confidence"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "detections, inference_ms, model"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "defect_class, defect_score, image_id"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "plate_text, plate_confidence"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "objects, frame_rate fps"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "anomaly_score, camera_id, frame"}, "expect": {"device_type": "vision"}, "source": "generic"}
+{"state": {"readings": "value"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "status"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "uptime s, rssi dBm"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "counter"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "data"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "firmware, uptime s"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "x, y"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "reading"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "heartbeat"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "payload, ts"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "rssi dBm, snr dB"}, "expect": {"device_type": null}, "source": "edge"}
+{"state": {"readings": "state"}, "expect": {"device_type": null}, "source": "edge"}

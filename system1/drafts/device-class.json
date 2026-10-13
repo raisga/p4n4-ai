@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "questions": {
+    "device_type": {
+      "type": "choice",
+      "instructions": "Which kind of device sends readings with these names and units?",
+      "criteria": {
+        "environment": "air or soil conditions: temperature, humidity, CO2, light, particles",
+        "energy": "electricity: voltage, current, power, energy, kWh",
+        "vibration": "machine condition: vibration, acceleration in g, velocity in mm/s, rpm, spectrum",
+        "flow_pressure": "fluids in pipes: flow rate, pressure in bar or psi",
+        "level": "tank, silo or water level, distance to a surface, fill %",
+        "location": "GPS tracker: latitude, longitude, satellites, speed, heading",
+        "vision": "camera or vision model: labels, detections, confidence scores, frames",
+        "unknown": "only generic names such as value, status, data or uptime"
+      }
+    }
+  },
+  "eval": {
+    "no_answer_keys": {
+      "device_type": [
+        "unknown"
+      ]
+    },
+    "min_examples": 50
+  },
+  "description": "DRAFT, not shipped: it fails its gates on the base checkpoints (system1.md §16). Readings of a newly seen device, as names and units, never the device id. State: {readings}."
+}

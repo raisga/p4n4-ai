@@ -158,13 +158,18 @@ p4n4-ai/
 │   │       ├── scheduled-digest.json   # Hourly telemetry summary via Ollama
 │   │       ├── device-onboarding.json  # Auto-register new MQTT devices
 │   │       ├── incident-escalation.json # Rules, System 1 suggestion, escalate every alert
-│   │       └── operator-intake.json    # Chat messages to confirmed requests, with System 1
-│   └── system1/questions/
-│       ├── incident-triage.json        # Question set: likely cause of a critical alert
-│       ├── incident-triage.eval.jsonl  # Its evaluation examples and gates' input
-│       ├── operator-intake.json        # Question set: request type and asset of a message
-│       └── operator-intake.eval.jsonl  # Its examples, in English and Spanish
-├── system1/                            # System 1 image: Dockerfile, wrapper, hash pins, locks, tests
+│   │       ├── operator-intake.json    # Chat messages to confirmed requests, with System 1
+│   │       └── system1-drift.json      # Grafana's System 1 drift alerts to system1/drift/<set>
+│   └── system1/
+│       ├── questions/
+│       │   ├── incident-triage.json        # Question set: likely cause of a critical alert
+│       │   ├── incident-triage.eval.jsonl  # Its evaluation examples and gates' input
+│       │   ├── operator-intake.json        # Question set: request type and asset of a message
+│       │   └── operator-intake.eval.jsonl  # Its examples, in English and Spanish
+│       └── calibration/                # Optional site temperatures (SYSTEM1_CALIBRATION)
+├── system1/                            # System 1 image: Dockerfile, wrapper, hash pins, locks, tests;
+│                                       #   drafts/: S3 sets that don't pass yet (not served);
+│                                       #   train/: S4 fine-tuning corpus, training and model card
 └── scripts/
     ├── pull-models.sh                  # Helper to pull models into Ollama
     ├── selector.sh                     # Interactive service selector
@@ -181,7 +186,9 @@ key and no silent truncation. It answers server-side question sets in
 `config/system1/questions/` and abstains when unsure. Nothing safety-related depends on
 it, and every workflow works the same without it. Two sets ship: `incident-triage` for
 Incident Escalation and `operator-intake` for Operator Intake; `GET /v1/sets` lists what
-the service loaded, and a set's `temperatures` key calibrates single questions.
+the service loaded, and a set's `temperatures` key calibrates single questions. A site file
+in `config/system1/calibration/` (`SYSTEM1_CALIBRATION`) calibrates every set, and the
+iot stack's Grafana alerts when a set drifts (System 1 Drift workflow below).
 
 ```bash
 p4n4 ai system1 enable          # with the p4n4 CLI: key, profile, model, n8n credential
@@ -194,7 +201,14 @@ docker compose up -d
 
 Until the first image release, build it locally (`make system1-build`) and set
 `SYSTEM1_IMAGE=p4n4-system1:dev`. `make system1-test` runs the regression suite against
-it, and `make system1-lock` recompiles the hashed dependency locks. The design, the
+it, and `make system1-lock` recompiles the hashed dependency locks.
+
+**Fine-tuning (S4).** `make system1-train` fine-tunes `multilingual` on a generic synthetic
+corpus for every set, off the device (about 2 h on 8 CPU cores), and writes the repository
+to publish to `system1/train/out/`. `system1/train/compare.py` judges it against the base on
+the held-out evaluation files, `card.py` writes its model card, and `pin.py` adds its hashes
+to `system1/pins.json` once it is pushed to a Hugging Face repository you control. Serve it
+with `SYSTEM1_REPO` and `SYSTEM1_REVISION`, after rebuilding the image. The design, the
 measurements and the rules of use are in p4n4-docs:
 [System 1](https://github.com/raisga/p4n4-docs/blob/main/decisions/system1.md) and the
 [AI stack page](https://github.com/raisga/p4n4-docs/blob/main/stacks/ai-stack.md#system-1-typed-decisions).
@@ -240,7 +254,7 @@ docker exec p4n4-ollama ollama list
 
 ## n8n Workflows
 
-Five starter workflows are included in `config/n8n/workflows/`. Import them via the n8n UI:
+Six starter workflows are included in `config/n8n/workflows/`. Import them via the n8n UI:
 
 1. Open n8n at <http://localhost:5678>
 2. Create the credentials below
@@ -252,7 +266,7 @@ Or import them all from the command line, then publish them and restart n8n:
 ```bash
 docker cp config/n8n/workflows p4n4-n8n:/tmp/workflows
 docker exec p4n4-n8n n8n import:workflow --separate --input=/tmp/workflows
-for id in p4n4AlertEnrichment p4n4DeviceOnboarding p4n4IncidentEscalation p4n4OperatorIntake p4n4ScheduledDigest; do
+for id in p4n4AlertEnrichment p4n4DeviceOnboarding p4n4IncidentEscalation p4n4OperatorIntake p4n4ScheduledDigest p4n4System1Drift; do
   docker exec p4n4-n8n n8n publish:workflow --id=$id
 done
 docker restart p4n4-n8n
@@ -267,6 +281,7 @@ The workflows have fixed IDs, so importing them again updates them instead of ad
 | `device-onboarding.json` | Listens on `devices/+/register`; auto-registers new devices and publishes a confirmation to MQTT |
 | `incident-escalation.json` | Listens on `alerts/+/critical`; site rules route known alerts, [System 1](#system-1) may suggest a team for the rest, every alert goes to `alerts/escalated` with the on-call recipient, and Ollama's summary follows on `alerts/escalated/summary` |
 | `operator-intake.json` | Operators' chat messages, from `operator/messages/<channel>` or a token-protected webhook, become draft requests: rules answer greetings, [System 1](#system-1) suggests the request type and the asset, buttons ask for the rest, and nothing happens until the operator confirms. Replies go to `operator/replies/<channel>`, confirmed requests to `operator/requests/<intent>`, confirmations to `system1/feedback/operator-intake` |
+| `system1-drift.json` | Receives the iot stack's Grafana drift alerts for System 1 (a token-protected webhook) and publishes each, firing or resolved, on `system1/drift/<set>`: a prompt to evaluate the set again |
 
 ### Credentials and Settings in n8n
 
@@ -274,7 +289,7 @@ The workflows use these credentials, matched by name:
 
 - **`p4n4 MQTT`** (type MQTT): host `p4n4-mqtt` *(service name on p4n4-net)*, port `1883`, and the username and password from your p4n4-iot `.env` if the broker requires them.
 - **`p4n4 InfluxDB`** (type Header Auth, used by the Scheduled Digest): name `Authorization`, value `Token <INFLUXDB_TOKEN>` with the token from this stack's `.env`.
-- **`p4n4 System 1`** and **`p4n4 Operator Intake`** (type Header Auth, used by Incident Escalation and Operator Intake): name `Authorization`, value `Bearer <SYSTEM1_API_KEY>` and `Bearer <OPERATOR_INTAKE_TOKEN>`. `p4n4 ai system1 enable` creates both, and `p4n4 secret rotate` updates them.
+- **`p4n4 System 1`**, **`p4n4 Operator Intake`** and **`p4n4 System 1 Alerts`** (type Header Auth, used by Incident Escalation and Operator Intake, and checked by the Operator Intake and System 1 Drift webhooks): name `Authorization`, value `Bearer <SYSTEM1_API_KEY>`, `Bearer <OPERATOR_INTAKE_TOKEN>` and `Bearer <SYSTEM1_ALERT_TOKEN>`. `p4n4 ai system1 enable` creates them, and `p4n4 secret rotate` updates them.
 
 The Scheduled Digest's **Settings** node holds the InfluxDB org and bucket it queries (`ming` and `raw_telemetry`, the platform defaults). If your project uses another `INFLUXDB_ORG`, change it there. The workflows don't read `.env` through `$env`: n8n blocks that by default.
 

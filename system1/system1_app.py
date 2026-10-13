@@ -35,6 +35,8 @@ MAX_BODY_BYTES = int(os.environ.get("SYSTEM1_MAX_BODY_BYTES", "65536"))
 CHUNK = int(os.environ.get("SYSTEM1_QUESTION_CHUNK", "2"))
 FP16_EMBEDDINGS = os.environ.get("SYSTEM1_FP16_EMBEDDINGS", "1") == "1"
 QUESTIONS_DIR = os.environ.get("SYSTEM1_QUESTIONS", "/config/questions")
+# SYSTEM1_CALIBRATION names a file here, or is an absolute path
+CALIBRATION_DIR = os.environ.get("SYSTEM1_CALIBRATION_DIR", "/config/calibration")
 OPTION_TOKENS = 48  # laya's build_sequence reads at most this many tokens of each option
 BUCKETS = {"%s:%s" % (t, n) for t in QTYPES for n in ("2", "3-5", "6-10", "11+")}  # laya's temp_bucket
 THRESHOLD_ON = ("confidence", "answer_confidence")
@@ -457,6 +459,8 @@ def build_app():
     if FP16_EMBEDDINGS:
         use_half_embeddings(agent.model, os.path.join(local, subfolder or "", "model.safetensors"))
     calibration = os.environ.get("SYSTEM1_CALIBRATION")
+    if calibration and not os.path.isabs(calibration):
+        calibration = os.path.join(CALIBRATION_DIR, calibration)
     if calibration:
         try:
             with open(calibration, encoding="utf-8") as f:

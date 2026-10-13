@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "questions": {
+    "category": {
+      "type": "choice",
+      "instructions": "Which problem does this log line report, if any?",
+      "criteria": {
+        "network": "connection refused or timed out, DNS failure, link down, unreachable host",
+        "auth": "login, password, token or permission refused",
+        "disk": "storage full, I/O error, read-only or failing disk",
+        "memory": "out of memory, allocation failed, process killed for memory",
+        "crash": "segfault, panic, core dump, unhandled exception, abnormal exit",
+        "config": "invalid, unknown or missing setting, configuration parse error",
+        "info": "no problem: a routine message such as started, connected, listening or synchronised",
+        "unknown": "cannot tell"
+      }
+    }
+  },
+  "eval": {
+    "no_answer_keys": {
+      "category": [
+        "info",
+        "unknown"
+      ]
+    },
+    "min_examples": 50
+  },
+  "description": "DRAFT, not shipped: it fails its gates on the base checkpoints (system1.md §16). Single log lines that a caller's error filter let through (an `ERROR_LINE` pattern in the workflow). State: {line}."
+}

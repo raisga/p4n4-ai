@@ -1,0 +1,52 @@
+{"state": {"text": "What's the temperature in the greenhouse right now?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Is pump 2 running?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Show me the current pressure on line 1."}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Which devices are offline?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "What was the last reading from sensor-04?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Is the compressor on or off?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "List the active alerts."}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "What's the tank level?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "How much power is the plant drawing now?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Is the cold room door closed?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Current humidity in room 3?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Status of gateway gw-01?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Explain what a vibration reading of 7 mm/s RMS means for a pump."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Summarise this alert for the night shift: compressor tripped twice on overcurrent."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Write a short message to the team that the cold room will be serviced tomorrow."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Translate 'pump 3 is leaking oil' into Spanish."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "What does error code E42 usually mean on a variable frequency drive?"}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Draft an email to the supplier asking for spare seals."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Explain the difference between RMS and peak vibration."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Rewrite this note so it's clearer: pump bad noise fix asap."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Give me three possible causes for a pressure drop in a water line."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "What is a good humidity range for a greenhouse with tomatoes?"}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Summarise these readings: 31 °C, 32 °C, 35 °C, 34 °C over the last hour."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Explain what a power factor of 0.7 means."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "What did we decide about pump 2 last week?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Remind me tomorrow morning to check the compressor filter."}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Has this alert happened before, and what fixed it last time?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Remember that the cold room door sensor is unreliable."}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "What did I ask you yesterday about the greenhouse?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Keep track of how often line 1 trips this month."}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Following up on our conversation: did the technician come?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "What's the history of faults on the air compressor?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Note that we replaced the seals on pump 3 today."}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Compare this week's incidents with what we discussed on Monday."}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Who did I say was on call this weekend?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Last time the pressure dropped, what did we find?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "asdf qwer"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "ok"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "👍"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "Lorem ipsum dolor sit amet."}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "..."}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "hmm"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "?"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "test test"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "blah"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "k"}, "expect": {"route": null}, "source": "edge"}
+{"state": {"text": "Are the greenhouse vents open?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "What's the voltage on the main feeder right now?"}, "expect": {"route": "none"}, "source": "generic"}
+{"state": {"text": "Suggest a polite reply to a customer asking why their order is late."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Explain how a pressure relief valve works, in two sentences."}, "expect": {"route": "ollama"}, "source": "generic"}
+{"state": {"text": "Did we ever get the replacement motor for the conveyor we talked about?"}, "expect": {"route": "letta"}, "source": "generic"}
+{"state": {"text": "Remember: from now on the night shift lead also covers the warehouse."}, "expect": {"route": "letta"}, "source": "generic"}

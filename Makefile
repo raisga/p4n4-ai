@@ -3,7 +3,8 @@
 # ==============================================================================
 
 .PHONY: help up down restart logs ps clean pull status interactive start stop \
-        models pull-models test-ollama system1-pull system1-build system1-lock system1-test
+        models pull-models test-ollama system1-pull system1-build system1-lock system1-test \
+        system1-train
 
 # Colors
 GREEN  := \033[0;32m
@@ -57,6 +58,7 @@ help:
 	@printf "    $(GREEN)make system1-build$(NC)   Build the image locally (p4n4-system1:dev)\n"
 	@printf "    $(GREEN)make system1-lock$(NC)    Recompile the hashed dependency locks\n"
 	@printf "    $(GREEN)make system1-test$(NC)    Run the regression suite against the image\n"
+	@printf "    $(GREEN)make system1-train$(NC)   Fine-tune the checkpoint off the device (S4)\n"
 	@echo ""
 	@printf "  $(BOLD)Testing:$(NC)\n"
 	@printf "    $(GREEN)make test-ollama$(NC)     Send a test prompt to Ollama\n"
@@ -224,6 +226,8 @@ test-ollama:
 
 SYSTEM1_DEV_IMAGE ?= p4n4-system1:dev
 SYSTEM1_TEST_MODELS ?= system1-test-models
+SYSTEM1_TRAIN_OUT ?= system1/train/out
+SYSTEM1_TRAIN_BASE := /models/hub/models--convaiinnovations--laya/snapshots/$$(grep -m1 '^SYSTEM1_REVISION=' .env.example | cut -d= -f2)/multilingual
 SYSTEM1_LOCK_FLAGS := -c constraints.txt --generate-hashes --python-version 3.12 \
 	--index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu \
 	--index-strategy unsafe-best-match --no-header --emit-index-url
@@ -250,3 +254,18 @@ system1-test:
 		-v $(SYSTEM1_TEST_MODELS):/models $(SYSTEM1_DEV_IMAGE) python /app/system1_app.py pull
 	SYSTEM1_TEST_IMAGE=$(SYSTEM1_DEV_IMAGE) SYSTEM1_TEST_MODELS=$(SYSTEM1_TEST_MODELS) \
 		python3 -m pytest -q system1/tests
+
+# Off the device only: a workstation or a GPU runner (~2 h on 8 CPU cores, 11 GiB). Writes
+# the corpus and the repository to publish to $(SYSTEM1_TRAIN_OUT); then compare.py, card.py,
+# pin.py (docs: decisions/system1.md §17)
+system1-train:
+	mkdir -p $(SYSTEM1_TRAIN_OUT)
+	python3 system1/train/corpus.py $(SYSTEM1_TRAIN_OUT)/corpus.jsonl
+	docker volume create $(SYSTEM1_TEST_MODELS) >/dev/null
+	docker run --rm --user 10001:10001 -e HF_HUB_OFFLINE=0 \
+		-e SYSTEM1_REVISION=$$(grep -m1 '^SYSTEM1_REVISION=' .env.example | cut -d= -f2) \
+		-v $(SYSTEM1_TEST_MODELS):/models $(SYSTEM1_DEV_IMAGE) python /app/system1_app.py pull
+	docker run --rm --user $$(id -u):$$(id -g) --memory 11g -e HF_HUB_OFFLINE=1 \
+		-v $(SYSTEM1_TEST_MODELS):/models:ro -v $(CURDIR)/system1:/src:ro \
+		-v $(abspath $(SYSTEM1_TRAIN_OUT)):/out $(SYSTEM1_DEV_IMAGE) \
+		python /src/train/train.py /out/corpus.jsonl /out/checkpoint --base $(SYSTEM1_TRAIN_BASE)

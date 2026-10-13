@@ -134,11 +134,16 @@ services:
       # Empty: the service refuses to start (32+ characters)
       LAYA_API_KEY: ${SYSTEM1_API_KEY:-}
       LAYA_THREADS: ${SYSTEM1_THREADS:-2}
+      # A fine-tuned checkpoint lives in a repository p4n4 controls, pinned like the base (S4)
+      SYSTEM1_REPO: ${SYSTEM1_REPO:-convaiinnovations/laya}
       SYSTEM1_REVISION: ${SYSTEM1_REVISION:-aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8}
       SYSTEM1_CHECKPOINT: ${SYSTEM1_CHECKPOINT:-multilingual}
+      # Site temperatures per laya bucket: a file in config/system1/calibration/; empty: none
+      SYSTEM1_CALIBRATION: ${SYSTEM1_CALIBRATION:-}
     volumes:
       - system1-models:/models:ro
       - ./config/system1/questions:/config/questions:ro
+      - ./config/system1/calibration:/config/calibration:ro
     healthcheck:
       # The image has neither curl nor wget
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health')"]
@@ -170,6 +175,7 @@ services:
       - no-new-privileges:true
     environment:
       HF_HUB_OFFLINE: "0"
+      SYSTEM1_REPO: ${SYSTEM1_REPO:-convaiinnovations/laya}
       SYSTEM1_REVISION: ${SYSTEM1_REVISION:-aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8}
       SYSTEM1_CHECKPOINT: ${SYSTEM1_CHECKPOINT:-multilingual}
     command: ["python", "/app/system1_app.py", "pull"]

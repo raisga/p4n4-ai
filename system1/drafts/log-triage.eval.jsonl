@@ -1,0 +1,57 @@
+{"state": {"line": "connect ECONNREFUSED 10.0.0.12:1883"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "ping: sendmsg: Network is unreachable"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "Temporary failure in name resolution while resolving influxdb"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "eth0: Link is Down"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "curl: (28) Connection timed out after 10001 milliseconds"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "dial tcp 172.18.0.4:8086: connect: no route to host"}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "mosquitto: Client node-red has exceeded timeout, disconnecting."}, "expect": {"category": "network"}, "source": "generic"}
+{"state": {"line": "sshd[2211]: Failed password for invalid user admin from 203.0.113.7 port 52144 ssh2"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "HTTP 401 Unauthorized: invalid or missing bearer token"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "mosquitto: Client sensor-04 disconnected, not authorised."}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "influxdb: authorization not found for token"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "sudo: pi : 3 incorrect password attempts ; TTY=pts/0 ; COMMAND=/bin/systemctl"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "grafana: Invalid username or password, user=admin"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "JWT verification failed: token expired at 2026-10-12T08:00:00Z"}, "expect": {"category": "auth"}, "source": "generic"}
+{"state": {"line": "write /var/lib/influxdb2/engine/wal/_00042.wal: no space left on device"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "EXT4-fs error (device mmcblk0p2): ext4_find_entry:1455: reading directory lblock 0"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "blk_update_request: I/O error, dev sda, sector 2048 op 0x0:(READ)"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "mount: /data: cannot mount; read-only file system"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "smartd[512]: Device: /dev/sda, 8 Currently unreadable (pending) sectors"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "docker: failed to register layer: Error processing tar file: write /usr/lib: no space left on device"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "kernel: Buffer I/O error on dev mmcblk0p2, logical block 1024, lost async page write"}, "expect": {"category": "disk"}, "source": "generic"}
+{"state": {"line": "kernel: Out of memory: Killed process 3112 (ollama) total-vm:8123456kB"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "node-red: FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "python3: MemoryError: Unable to allocate 512 MiB for an array"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "kernel: oom-kill:constraint=CONSTRAINT_MEMCG,task=letta,pid=4410"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "fork: Cannot allocate memory"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "container p4n4-system1 exited with code 137 (OOMKilled: true)"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "kernel: swap: Swap space exhausted, 0 kB free"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "java.lang.OutOfMemoryError: Java heap space"}, "expect": {"category": "memory"}, "source": "generic"}
+{"state": {"line": "kernel: node[2210]: segfault at 0 ip 00007f3a sp 00007ffd error 4 in libc.so.6"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "systemd[1]: telegraf.service: Main process exited, code=dumped, status=11/SEGV"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "Traceback (most recent call last): File \"/app/main.py\", line 42, in <module> KeyError: 'value'"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "panic: runtime error: invalid memory address or nil pointer dereference"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "p4n4-ei-runner exited with code 139"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "Kernel panic - not syncing: Attempted to kill init! exitcode=0x0000000b"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "node-red: Unhandled exception: TypeError: Cannot read properties of undefined (reading 'payload')"}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "systemd[1]: mosquitto.service: Failed with result 'core-dump'."}, "expect": {"category": "crash"}, "source": "generic"}
+{"state": {"line": "mosquitto: Error: Unknown configuration variable \"listner\"."}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "grafana: failed to parse provisioning file datasources.yml: yaml: line 12: mapping values are not allowed"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "influxd: invalid value for --storage-cache-max-memory-size: \"2gb\""}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "docker compose: services.node-red.environment must be a mapping"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "telegraf: Error parsing /etc/telegraf/telegraf.conf, line 18: invalid TOML syntax"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "n8n: N8N_ENCRYPTION_KEY is not set; refusing to start"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "nginx: [emerg] unknown directive \"proxy_passs\" in /etc/nginx/conf.d/default.conf:14"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "system1: SYSTEM1_REVISION must be a 40-character commit sha"}, "expect": {"category": "config"}, "source": "generic"}
+{"state": {"line": "Error: see previous message"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "ERROR 0x00000001"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "Unknown error"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "failed"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "error code -1"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "Operation failed, retrying (attempt 2 of 5)"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "ERROR: an error occurred"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "FATAL: unexpected state"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "Job for app.service failed. See 'systemctl status app.service' for details."}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "something went wrong: error"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "task failed with status 1"}, "expect": {"category": null}, "source": "edge"}
+{"state": {"line": "app[311]: critical: 42"}, "expect": {"category": null}, "source": "edge"}

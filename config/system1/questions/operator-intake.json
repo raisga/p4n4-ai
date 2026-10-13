@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "description": "Operator messages from a chat channel, in English and Spanish, turned into a draft the operator confirms. State: {text}, the message's text, at most 500 characters; the channel and the sender stay in the workflow, because the channel acted as a prior. Criteria are in English, and asset aliases list the local names in parentheses. 'other' and 'pump' mean no answer: the workflow asks with buttons. Greetings and thanks are filtered by rules first; 'other' catches the ones that get past them. Thresholds and the intent coverage gate are fitted to the generic evaluation file; a site renames the assets, adds its own examples and refits (p4n4 ai system1 eval --fit-thresholds).",
   "questions": {
     "intent": {
@@ -26,7 +26,7 @@
     }
   },
   "thresholds": {
-    "intent": 0.92,
+    "intent": 0.95,
     "asset": 0.8
   },
   "threshold_on": "confidence",

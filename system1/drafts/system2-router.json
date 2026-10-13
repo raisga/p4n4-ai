@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "questions": {
+    "route": {
+      "type": "choice",
+      "instructions": "What does answering this request need?",
+      "criteria": {
+        "none": "a current reading, a status or a list that the data shows directly",
+        "ollama": "one written answer: explain, summarise, translate, draft or advise",
+        "letta": "memory: earlier conversations, past events, follow-ups or something to remember",
+        "unknown": "nothing to answer"
+      }
+    }
+  },
+  "eval": {
+    "no_answer_keys": {
+      "route": [
+        "unknown"
+      ]
+    },
+    "min_examples": 50
+  },
+  "description": "DRAFT, not shipped: it fails its gates on the base checkpoints (system1.md §16). What answering an operator's request needs: no model, Ollama, or a Letta agent. State: {text}."
+}

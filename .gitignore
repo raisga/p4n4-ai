@@ -34,6 +34,9 @@ letta/data/
 .DS_Store
 Thumbs.db
 
+# Python bytecode (the System 1 tests)
+__pycache__/
+
 # Logs
 *.log
 logs/
@@ -45,3 +48,6 @@ temp/
 
 # SEDA agents
 .agents/
+
+# System 1 fine-tuning output (make system1-train): corpus and checkpoint
+system1/train/out/

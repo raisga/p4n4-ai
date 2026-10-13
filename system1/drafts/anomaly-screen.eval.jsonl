@@ -1,0 +1,52 @@
+{"state": {"window": "temperature, cold room: rose from 3.1 to 9.8 °C over 40 minutes, steadily, limit 5 °C"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "vibration, pump 2: RMS from 2.1 to 6.8 mm/s over 3 days, still rising"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "pressure, line 1: dropped from 4.2 to 1.1 bar in 2 minutes while flow stayed the same"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "current, compressor: 3 trips in the last hour, each at start-up"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "humidity, greenhouse: stuck at exactly 61.0 % for 9 hours"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature and humidity, room 3: both jumped at the same moment, temperature +8 °C, humidity -30 %"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "power, plant: night consumption 40 % above every night of the past month"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "flow, water main: 12 L/min overnight while every valve should be closed"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "tank level: fell 18 % in 20 minutes with the outlet pump off"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "battery, gateway: voltage from 12.6 to 11.2 V in one day"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, motor bearing: 15 °C above the other identical motor under the same load"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "co2, office: 2400 ppm and rising for 2 hours"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "vibration, fan: new peak at 2x running speed that wasn't there last week"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "pressure, pump discharge: oscillating ±1.5 bar every 10 seconds for an hour"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "readings, sensor-07: alternating between 0 and 4095 every sample"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, freezer: defrost cycle took 3 hours instead of the usual 40 minutes"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "current, three phases: phase L2 18 % higher than L1 and L3 since this morning"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "flow and pressure, line 2: flow up 30 %, pressure down 25 % together"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, server cabinet: 41 °C, fans reporting full speed"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "level, silo 1: rising while no delivery is scheduled"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, greenhouse: 12 °C at night, 28 °C at noon, same as every day this month"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "power, plant: peak at 07:00 when the shift starts, as every weekday"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "temperature, cold room: one reading of 6.2 °C during a door opening, back to 3 °C in 2 minutes"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "vibration, pump 2: one spike to 5 mm/s at start-up, then 2.1 mm/s"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "humidity, greenhouse: drops by 10 % every time the irrigation stops, as scheduled"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "readings, sensor-04: no data for 15 minutes during the planned maintenance window"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "pressure, line 1: small noise of ±0.05 bar around 4.2 bar"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "temperature, freezer: defrost cycle at 02:00 for 40 minutes, as every night"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "level, tank: falls in the morning and refills at night, as every day"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "co2, office: 900 ppm at 11:00 with the room full, normal for meetings"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "current, compressor: start-up surge of 3x running current for 1 second"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "battery, sensor-09: 3.6 V, dropping 0.01 V per week as expected"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "temperature, motor: warms up by 20 °C in the first hour after start, then steady"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "flow, water main: zero overnight with all valves closed"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "power, plant: lower on Sunday with the plant closed"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "illuminance, greenhouse: dark from 19:00 to 07:00"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "vibration, fan: steady at 1.8 mm/s for a week"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "temperature, server cabinet: 27 °C, within its usual range"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "pressure, pump discharge: steps up when the second pump starts, as configured"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "readings, gateway: one missed heartbeat, then regular again"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "power, freezer 2: compressor running all day without the usual on/off cycling"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, oven 1: reads 0.0 °C while the oven is baking"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "level, water tower: 2 % lower every morning for 5 days, no usage change"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "humidity, warehouse: two sensors 3 m apart read 35 % and 80 %"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "flow, cooling loop: halved overnight, pump speed unchanged"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "vibration, gearbox: doubled since the oil change yesterday and still rising"}, "expect": {"worth": "explain"}, "source": "generic"}
+{"state": {"window": "temperature, office: heating comes on at 06:00 and the room reaches 21 °C by 08:00, every weekday"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "current, conveyor: higher while loaded and lower while empty, following the production plan"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "pressure, compressed air: falls slightly during the lunch break when tools stop, recovers after"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "level, fuel tank: jumped from 20 % to 90 % at the scheduled delivery"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "co2, greenhouse: higher at night when the plants respire, lower by day"}, "expect": {"worth": "routine"}, "source": "generic"}
+{"state": {"window": "readings, sensor-12: one value of 99.9 for a single sample, then normal"}, "expect": {"worth": "routine"}, "source": "generic"}
