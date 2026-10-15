@@ -13,6 +13,13 @@ docker-compose.override.yml
 # Docker volumes (if mounted locally)
 data/
 
+# Edge inference model binaries (provided at deploy time — NEVER commit)
+edge-impulse/models/*.eim
+edge-impulse/models/*.eim.bak
+edge-impulse/models/*.zip
+onnx/models/*.onnx
+onnx/models/*.onnx.bak
+
 # Ollama models (large binary files — pulled at runtime)
 ollama/models/
 
@@ -34,8 +41,10 @@ letta/data/
 .DS_Store
 Thumbs.db
 
-# Python bytecode (the System 1 tests)
+# Python bytecode (the runner and System 1 tests)
 __pycache__/
+*.py[cod]
+.pytest_cache/
 
 # Logs
 *.log

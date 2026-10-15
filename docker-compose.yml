@@ -1,6 +1,7 @@
 # Every service is optional: each sits in a profile of its own name, and
 # COMPOSE_PROFILES in .env lists the ones that start. The default is Ollama;
-# add letta, n8n and system1 as needed. None of them depends on another.
+# add letta, n8n, system1 and ei-runner (edge inference) as needed. None of
+# them depends on another.
 
 services:
 
@@ -12,7 +13,7 @@ services:
   # Local LLM Runtime (Ollama)
   # ------------------------------------------------------------------------------------
   ollama:
-    image: ollama/ollama:0.35
+    image: ollama/ollama:0.35.1
     container_name: p4n4-ollama
     profiles: [ollama]
     restart: ${RESTART_POLICY:-unless-stopped}
@@ -184,6 +185,62 @@ services:
     networks:
       - p4n4-net
 
+  # ====================================================================================
+  # EDGE INFERENCE
+  # ====================================================================================
+
+  # ------------------------------------------------------------------------------------
+  # Inference Runner (Edge Impulse .eim or ONNX .onnx): sensors/<device>/raw on MQTT in,
+  # inference/<device>/result and the ai_events bucket out. Opt-in with the ei-runner
+  # profile (it was the p4n4-edge stack until that merged into p4n4-ai).
+  # ------------------------------------------------------------------------------------
+  ei-runner:
+    build: ./runner
+    container_name: p4n4-ei-runner
+    profiles: [ei-runner]
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      # Health / status and inference API. Localhost only by default: it has no
+      # authentication. p4n4-api reaches it on p4n4-net or on localhost.
+      - "${EI_RUNNER_BIND:-127.0.0.1}:8080:8080"
+    environment:
+      # Model backend: auto | eim | onnx | mock
+      MODEL_BACKEND: ${MODEL_BACKEND:-auto}
+      # Most values one sample may carry; larger samples are rejected
+      MAX_FEATURES: ${MAX_FEATURES:-65536}
+      # Edge Impulse model file (place .eim in edge-impulse/models/)
+      EI_MODEL_PATH: /models/${EI_MODEL_FILE:-model.eim}
+      EI_API_KEY: ${EI_API_KEY:-}
+      # ONNX model file (place .onnx in onnx/models/)
+      ONNX_MODEL_PATH: /onnx-models/${ONNX_MODEL_FILE:-model.onnx}
+      ONNX_LABELS: ${ONNX_LABELS:-}
+      # MQTT broker (shared with p4n4-iot — must match values in p4n4-iot .env)
+      MQTT_HOST: ${MQTT_HOST:-p4n4-mqtt}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_USER: ${MQTT_USER:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_TOPIC_INPUT: ${MQTT_TOPIC_INPUT:-sensors/+/raw}
+      MQTT_TOPIC_RESULTS: ${MQTT_TOPIC_RESULTS:-inference/{device}/result}
+      # InfluxDB (shared with p4n4-iot — must match values in p4n4-iot .env)
+      INFLUXDB_URL: http://p4n4-influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-p4n4-stack-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-ming}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET_AI_EVENTS:-ai_events}
+      TZ: ${TZ:-UTC}
+    volumes:
+      # Mount model directories read-only — place model files here at deploy time
+      - ./edge-impulse/models:/models:ro
+      - ./onnx/models:/onnx-models:ro
+      - ei-runner-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - p4n4-net
+
 # ====================================================================================
 # NETWORKS
 # ====================================================================================
@@ -200,3 +257,4 @@ volumes:
   letta-pgdata:
   n8n-data:
   system1-models:
+  ei-runner-data:

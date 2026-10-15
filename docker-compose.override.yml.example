@@ -63,3 +63,31 @@ services:
   #   entrypoint: >
   #     sh -c "n8n import:workflow --separate --input=/home/node/import-workflows
   #     && n8n start"
+
+  # ----------------------------------------------------------------------------
+  # ei-runner: mount a specific model file (override EI_MODEL_FILE at runtime)
+  # ----------------------------------------------------------------------------
+  # ei-runner:
+  #   environment:
+  #     EI_MODEL_FILE: my-custom-model-v2.eim
+
+  # ----------------------------------------------------------------------------
+  # ei-runner: NVIDIA GPU acceleration (for GPU-enabled .eim models)
+  # ----------------------------------------------------------------------------
+  # ei-runner:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+
+  # ----------------------------------------------------------------------------
+  # ei-runner: without p4n4-iot (a broker and InfluxDB on other hosts)
+  # ----------------------------------------------------------------------------
+  # ei-runner:
+  #   environment:
+  #     MQTT_HOST: "your-broker-host"
+  #     MQTT_PORT: "1883"
+  #     INFLUXDB_URL: "http://your-influxdb-host:8086"

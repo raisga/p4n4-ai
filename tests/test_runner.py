@@ -1,0 +1,739 @@
+"""
+Unit tests for runner/runner.py.
+
+No Docker, MQTT broker, or InfluxDB required — all external dependencies
+are mocked by conftest.py and unittest.mock.
+"""
+
+from __future__ import annotations
+
+import importlib
+import json
+import sys
+import urllib.request
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import paho.mqtt.client as mqtt
+import pytest
+from paho.mqtt.packettypes import PacketTypes
+from paho.mqtt.reasoncodes import ReasonCode
+
+# Make sure the runner package is importable from this repo layout
+_RUNNER_DIR = Path(__file__).parent.parent / "runner"
+if str(_RUNNER_DIR) not in sys.path:
+    sys.path.insert(0, str(_RUNNER_DIR))
+
+import runner as R  # noqa: E402  (conftest stubs must load first)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_mqtt_message(payload: object, topic: str = "sensors/dev-01/raw") -> MagicMock:
+    """Build a fake paho MQTTMessage-like object."""
+    msg = MagicMock()
+    msg.topic = topic
+    if isinstance(payload, (dict, list)):
+        msg.payload = json.dumps(payload).encode()
+    else:
+        msg.payload = payload
+    return msg
+
+
+def _reset_globals():
+    """Reset mutable module-level state between tests."""
+    R._runner = None
+    R._onnx_session = None
+    R._onnx_input_name = None
+    R._influx_write_api = None
+    R._state.update(
+        {
+            "mode": "mock",
+            "inference_count": 0,
+            "last_inference_at": None,
+            "last_latency_ms": None,
+            "mqtt_connected": False,
+            "influxdb_ok": False,
+        }
+    )
+
+
+@pytest.fixture(autouse=True)
+def clean_state():
+    _reset_globals()
+    yield
+    _reset_globals()
+
+
+# ---------------------------------------------------------------------------
+# _run_inference — mock mode (no .eim loaded)
+# ---------------------------------------------------------------------------
+
+class TestMockInference:
+    def test_returns_required_keys(self):
+        result = R._run_inference([1.0, 2.0, 3.0])
+        for key in ("label", "confidence", "anomaly_score", "latency_ms", "mode"):
+            assert key in result, f"Missing key: {key}"
+
+    def test_mode_is_mock(self):
+        result = R._run_inference([1.0, 2.0])
+        assert result["mode"] == "mock"
+
+    def test_confidence_in_range(self):
+        for _ in range(20):
+            r = R._run_inference([1.0, 2.0, 3.0])
+            assert 0.0 <= r["confidence"] <= 1.0
+
+    def test_anomaly_score_in_range(self):
+        for _ in range(20):
+            r = R._run_inference([5.0, 5.0, 5.0])
+            assert 0.0 <= r["anomaly_score"] <= 1.0
+
+    def test_latency_is_positive(self):
+        result = R._run_inference([1.0, 2.0])
+        assert result["latency_ms"] > 0
+
+    def test_handles_empty_values(self):
+        result = R._run_inference([])
+        assert result["mode"] == "mock"
+        assert 0.0 <= result["anomaly_score"] <= 1.0
+
+    def test_label_is_known_string(self):
+        known_labels = {"idle", "running", "anomaly", "vibration"}
+        for _ in range(30):
+            r = R._run_inference([1.0])
+            assert r["label"] in known_labels
+
+
+# ---------------------------------------------------------------------------
+# _run_inference — model mode (mocked ImpulseRunner)
+# ---------------------------------------------------------------------------
+
+class TestModelInference:
+    def test_returns_model_mode_when_runner_loaded(self):
+        mock_runner = MagicMock()
+        mock_runner.classify.return_value = {
+            "result": {
+                "classification": {"idle": 0.1, "anomaly": 0.9},
+                "anomaly": 0.87,
+            }
+        }
+        R._runner = mock_runner
+
+        result = R._run_inference([1.0, 2.0, 3.0])
+
+        assert result["mode"] == "model"
+        assert result["label"] == "anomaly"
+        assert result["confidence"] == pytest.approx(0.9, abs=1e-4)
+        assert result["anomaly_score"] == pytest.approx(0.87, abs=1e-4)
+
+    def test_eim_failure_raises_instead_of_mocking(self):
+        R._runner = MagicMock()
+        R._runner.classify.side_effect = RuntimeError("wrong feature count")
+
+        with pytest.raises(R.InferenceError, match="Edge Impulse inference failed"):
+            R._run_inference([1.0])
+
+    def test_mock_mode_never_raises(self):
+        # No model loaded: mock results are the real thing, not a fallback.
+        assert R._run_inference([1.0])["mode"] == "mock"
+
+
+# ---------------------------------------------------------------------------
+# _run_inference — ONNX mode (mocked InferenceSession)
+# ---------------------------------------------------------------------------
+
+class TestOnnxInference:
+    def _make_session(self, outputs):
+        session = MagicMock()
+        session.run.return_value = outputs
+        R._onnx_session = session
+        R._onnx_input_name = "input"
+        return session
+
+    def test_returns_onnx_mode_with_probability_output(self):
+        # Output already sums to 1 — used as-is
+        self._make_session([[0.1, 0.7, 0.2]])
+
+        with patch.object(R, "ONNX_LABELS", ["idle", "running", "anomaly"]):
+            result = R._run_inference([1.0, 2.0, 3.0])
+
+        assert result["mode"] == "onnx"
+        assert result["label"] == "running"
+        assert result["confidence"] == pytest.approx(0.7, abs=1e-4)
+
+    def test_applies_softmax_to_logits(self):
+        self._make_session([[2.0, -1.0, 0.5]])
+
+        result = R._run_inference([1.0, 2.0])
+
+        assert result["mode"] == "onnx"
+        assert result["label"] == "class_0"
+        assert 0.0 <= result["confidence"] <= 1.0
+
+    def test_handles_zipmap_dict_output(self):
+        self._make_session([[{"idle": 0.2, "anomaly": 0.8}]])
+
+        result = R._run_inference([1.0, 2.0])
+
+        assert result["mode"] == "onnx"
+        assert result["label"] == "anomaly"
+        assert result["confidence"] == pytest.approx(0.8, abs=1e-4)
+
+    def test_unnamed_classes_fall_back_to_class_index(self):
+        self._make_session([[0.1, 0.9]])
+
+        with patch.object(R, "ONNX_LABELS", []):
+            result = R._run_inference([1.0])
+
+        assert result["label"] == "class_1"
+
+    def test_session_failure_raises_instead_of_mocking(self):
+        session = MagicMock()
+        session.run.side_effect = RuntimeError("bad input shape")
+        R._onnx_session = session
+        R._onnx_input_name = "input"
+
+        with pytest.raises(R.InferenceError, match="ONNX inference failed: bad input shape"):
+            R._run_inference([1.0, 2.0])
+
+
+# ---------------------------------------------------------------------------
+# _load_backend — backend selection
+# ---------------------------------------------------------------------------
+
+class TestLoadBackend:
+    def test_auto_prefers_eim(self):
+        with patch.object(R, "MODEL_BACKEND", "auto"), \
+             patch.object(R, "_load_model", return_value=True) as load_eim, \
+             patch.object(R, "_load_onnx_model", return_value=True) as load_onnx:
+            assert R._load_backend() == "model"
+        load_eim.assert_called_once()
+        load_onnx.assert_not_called()
+
+    def test_auto_falls_back_to_onnx(self):
+        with patch.object(R, "MODEL_BACKEND", "auto"), \
+             patch.object(R, "_load_model", return_value=False), \
+             patch.object(R, "_load_onnx_model", return_value=True):
+            assert R._load_backend() == "onnx"
+
+    def test_auto_falls_back_to_mock(self):
+        with patch.object(R, "MODEL_BACKEND", "auto"), \
+             patch.object(R, "_load_model", return_value=False), \
+             patch.object(R, "_load_onnx_model", return_value=False):
+            assert R._load_backend() == "mock"
+
+    def test_onnx_backend_skips_eim(self):
+        with patch.object(R, "MODEL_BACKEND", "onnx"), \
+             patch.object(R, "_load_model", return_value=True) as load_eim, \
+             patch.object(R, "_load_onnx_model", return_value=True):
+            assert R._load_backend() == "onnx"
+        load_eim.assert_not_called()
+
+    def test_mock_backend_loads_nothing(self):
+        with patch.object(R, "MODEL_BACKEND", "mock"), \
+             patch.object(R, "_load_model", return_value=True) as load_eim, \
+             patch.object(R, "_load_onnx_model", return_value=True) as load_onnx:
+            assert R._load_backend() == "mock"
+        load_eim.assert_not_called()
+        load_onnx.assert_not_called()
+
+    @pytest.mark.parametrize("backend", ["eim", "onnx"])
+    def test_forced_backend_without_model_raises(self, backend):
+        with patch.object(R, "MODEL_BACKEND", backend), \
+             patch.object(R, "_load_model", return_value=False), \
+             patch.object(R, "_load_onnx_model", return_value=False), \
+             pytest.raises(R.BackendError, match="no model file"):
+            R._load_backend()
+
+    def test_unknown_backend_raises(self):
+        with patch.object(R, "MODEL_BACKEND", "onxx"), \
+             pytest.raises(R.BackendError, match="Unknown MODEL_BACKEND"):
+            R._load_backend()
+
+    def test_present_model_that_fails_to_load_raises(self, tmp_path):
+        model = tmp_path / "model.onnx"
+        model.write_bytes(b"not a model")
+        R.ort.InferenceSession.side_effect = RuntimeError("invalid protobuf")
+        try:
+            with patch.object(R, "MODEL_BACKEND", "auto"), \
+                 patch.object(R, "_load_model", return_value=False), \
+                 patch.object(R, "ONNX_MODEL_PATH", str(model)), \
+                 pytest.raises(R.BackendError, match="invalid protobuf"):
+                R._load_backend()
+        finally:
+            R.ort.InferenceSession.side_effect = None
+
+    def test_present_eim_without_sdk_raises(self, tmp_path):
+        model = tmp_path / "model.eim"
+        model.write_bytes(b"")
+        with patch.object(R, "MODEL_PATH", str(model)), \
+             patch.object(R, "HAS_EI_SDK", False), \
+             pytest.raises(R.BackendError, match="SDK not available"):
+            R._load_model()
+
+
+# ---------------------------------------------------------------------------
+# _on_message — MQTT message handling
+# ---------------------------------------------------------------------------
+
+class TestOnMessage:
+    def test_publishes_to_results_topic(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "dev-01", "values": [1.0, 2.0, 3.0]})
+
+        R._on_message(client, None, msg)
+
+        client.publish.assert_called_once()
+        topic, payload = client.publish.call_args[0]
+        assert topic == "inference/dev-01/result"
+        data = json.loads(payload)
+        assert data["device"] == "dev-01"
+
+    def test_results_topic_uses_topic_device(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"values": [1.0]}, "sensors/press-7/raw")
+
+        R._on_message(client, None, msg)
+
+        topic, _ = client.publish.call_args[0]
+        assert topic == "inference/press-7/result"
+
+    def test_results_topic_keeps_payload_device_to_one_level(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "a/b+#", "values": [1.0]}, "custom/input")
+
+        R._on_message(client, None, msg)
+
+        topic, payload = client.publish.call_args[0]
+        assert topic == "inference/a_b__/result"
+        assert json.loads(payload)["device"] == "a/b+#"
+
+    def test_results_topic_without_placeholder_is_fixed(self):
+        with patch.object(R, "MQTT_TOPIC_RESULTS", "inference/results"):
+            assert R._results_topic("dev-01") == "inference/results"
+
+    def test_result_payload_has_expected_keys(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "dev-01", "values": [1.0, 2.0]})
+
+        R._on_message(client, None, msg)
+
+        _, payload = client.publish.call_args[0]
+        data = json.loads(payload)
+        for key in ("device", "timestamp", "label", "confidence", "anomaly_score", "latency_ms", "mode"):
+            assert key in data, f"Missing key in published payload: {key}"
+
+    def test_increments_inference_count(self):
+        client = MagicMock()
+        assert R._state["inference_count"] == 0
+
+        R._on_message(client, None, _make_mqtt_message({"device": "d", "values": [1.0]}))
+        R._on_message(client, None, _make_mqtt_message({"device": "d", "values": [2.0]}))
+
+        assert R._state["inference_count"] == 2
+
+    def test_updates_last_inference_at(self):
+        client = MagicMock()
+        assert R._state["last_inference_at"] is None
+
+        R._on_message(client, None, _make_mqtt_message({"device": "d", "values": [1.0]}))
+
+        assert R._state["last_inference_at"] is not None
+
+    def test_updates_last_latency_ms(self):
+        client = MagicMock()
+        assert R._state["last_latency_ms"] is None
+
+        R._on_message(client, None, _make_mqtt_message({"device": "d", "values": [1.0]}))
+
+        assert isinstance(R._state["last_latency_ms"], float)
+
+    def test_ignores_malformed_json(self):
+        client = MagicMock()
+        msg = _make_mqtt_message(None)
+        msg.payload = b"not-valid-json"
+
+        R._on_message(client, None, msg)
+
+        client.publish.assert_not_called()
+        assert R._state["inference_count"] == 0
+
+    def test_ignores_message_without_values(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "dev-01"})  # no "values" key
+
+        R._on_message(client, None, msg)
+
+        client.publish.assert_not_called()
+
+    def test_ignores_message_with_empty_values(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "dev-01", "values": []})
+
+        R._on_message(client, None, msg)
+
+        client.publish.assert_not_called()
+
+    def test_takes_device_from_topic(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "payload-dev", "values": [1.0]}, "sensors/topic-dev/raw")
+
+        R._on_message(client, None, msg)
+
+        _, payload = client.publish.call_args[0]
+        assert json.loads(payload)["device"] == "topic-dev"
+
+    def test_falls_back_to_payload_device_for_other_topics(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"device": "payload-dev", "values": [1.0]}, "custom/input")
+
+        R._on_message(client, None, msg)
+
+        _, payload = client.publish.call_args[0]
+        assert json.loads(payload)["device"] == "payload-dev"
+
+    def test_ignores_non_object_payload(self):
+        client = MagicMock()
+        msg = _make_mqtt_message([1.0, 2.0])
+
+        R._on_message(client, None, msg)
+
+        client.publish.assert_not_called()
+
+    def test_uses_unknown_device_when_missing(self):
+        client = MagicMock()
+        msg = _make_mqtt_message({"values": [1.0, 2.0]}, "custom/input")  # no device anywhere
+
+        R._on_message(client, None, msg)
+
+        _, payload = client.publish.call_args[0]
+        data = json.loads(payload)
+        assert data["device"] == "unknown"
+
+
+class TestMqttRobustness:
+    """Nothing may escape a paho callback: paho re-raises it out of
+    loop_forever() and the runner exits (a retained message, on every restart)."""
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            b"[1,2,3]",
+            b'"hello"',
+            b"42",
+            b"null",
+            b'{"values": ["a"]}',
+            b'{"values": [true, 1.0]}',
+            b'{"values": [1e200]}',
+            b'{"values": [1e400]}',
+            b'{"values": [NaN]}',
+            b'{"values": [' + b"9" * 400 + b"]}",
+            b"[" * 1000 + b"]" * 1000,
+        ],
+    )
+    def test_bad_payload_is_dropped_not_raised(self, payload):
+        client = MagicMock()
+
+        R._on_message(client, None, _make_mqtt_message(payload))
+
+        client.publish.assert_not_called()
+        assert R._state["inference_count"] == 0
+
+    def test_rejects_more_than_max_features(self, monkeypatch):
+        monkeypatch.setattr(R, "MAX_FEATURES", 2)
+        client = MagicMock()
+
+        R._on_message(client, None, _make_mqtt_message({"values": [1.0, 2.0, 3.0]}))
+
+        client.publish.assert_not_called()
+
+    def test_model_failure_drops_the_sample_instead_of_mocking(self):
+        session = MagicMock()
+        session.run.side_effect = RuntimeError("expected 4 features, got 1")
+        R._onnx_session = session
+        R._onnx_input_name = "input"
+        client = MagicMock()
+
+        R._on_message(client, None, _make_mqtt_message({"values": [1.0]}))
+
+        client.publish.assert_not_called()
+        assert R._state["inference_count"] == 0
+
+    def test_disconnect_takes_version2_arguments(self):
+        R._state["mqtt_connected"] = True
+
+        R._on_disconnect(
+            MagicMock(),
+            None,
+            mqtt.DisconnectFlags(is_disconnect_packet_from_server=False),
+            ReasonCode(PacketTypes.DISCONNECT, "Unspecified error"),
+            None,
+        )
+
+        assert R._state["mqtt_connected"] is False
+
+    def test_refused_connection_is_logged_and_not_subscribed(self, caplog):
+        client = MagicMock()
+
+        R._on_connect(
+            client,
+            None,
+            mqtt.ConnectFlags(session_present=False),
+            ReasonCode(PacketTypes.CONNACK, "Not authorized"),
+            None,
+        )
+
+        client.subscribe.assert_not_called()
+        assert "MQTT connection refused: Not authorized" in caplog.text
+        assert R._state["mqtt_connected"] is False
+
+    def test_accepted_connection_subscribes(self):
+        client = MagicMock()
+
+        R._on_connect(
+            client,
+            None,
+            mqtt.ConnectFlags(session_present=False),
+            ReasonCode(PacketTypes.CONNACK, "Success"),
+            None,
+        )
+
+        client.subscribe.assert_called_once_with(R.MQTT_TOPIC_INPUT)
+        assert R._state["mqtt_connected"] is True
+
+
+# ---------------------------------------------------------------------------
+# _write_result_to_influxdb — InfluxDB write
+# ---------------------------------------------------------------------------
+
+class TestInfluxDBWrite:
+    def test_skips_when_write_api_is_none(self):
+        R._influx_write_api = None
+        # Should not raise
+        R._write_result_to_influxdb(
+            {"device": "d", "label": "idle", "confidence": 0.9, "anomaly_score": 0.1, "latency_ms": 10.0, "mode": "mock"}
+        )
+
+    def test_calls_write_api(self):
+        mock_api = MagicMock()
+        R._influx_write_api = mock_api
+
+        R._write_result_to_influxdb(
+            {"device": "d", "label": "idle", "confidence": 0.9, "anomaly_score": 0.1, "latency_ms": 10.0, "mode": "mock"}
+        )
+
+        mock_api.write.assert_called_once()
+
+    def test_init_probes_with_a_valid_precision(self, monkeypatch):
+        monkeypatch.setattr(R, "INFLUXDB_TOKEN", "token")
+        monkeypatch.setattr(R, "HAS_INFLUXDB", True)
+        assert R._init_influxdb() is True
+        R._influx_write_api.write.assert_called_once()
+
+    def test_silences_write_exceptions(self):
+        mock_api = MagicMock()
+        mock_api.write.side_effect = Exception("influxdb down")
+        R._influx_write_api = mock_api
+
+        # Should not raise
+        R._write_result_to_influxdb(
+            {"device": "d", "label": "idle", "confidence": 0.9, "anomaly_score": 0.1, "latency_ms": 10.0, "mode": "mock"}
+        )
+
+    def test_health_follows_the_last_write(self):
+        mock_api = MagicMock()
+        R._influx_write_api = mock_api
+        result = {"device": "d", "label": "idle", "confidence": 0.9, "mode": "mock"}
+
+        mock_api.write.side_effect = Exception("influxdb down")
+        R._write_result_to_influxdb(result)
+        assert R._state["influxdb_ok"] is False
+
+        mock_api.write.side_effect = None
+        R._write_result_to_influxdb(result)
+        assert R._state["influxdb_ok"] is True
+
+
+# ---------------------------------------------------------------------------
+# Health HTTP endpoint
+# ---------------------------------------------------------------------------
+
+class TestModelFileReporting:
+    def test_mock_mode_reports_no_model_file(self):
+        assert R._model_file_for("mock") is None
+        assert R._model_file_for("starting") is None
+
+    def test_loaded_backends_report_their_file(self):
+        assert R._model_file_for("onnx") == R.ONNX_MODEL_PATH
+        assert R._model_file_for("model") == R.MODEL_PATH
+
+
+class TestHealthEndpoint:
+    def test_health_returns_200(self):
+        import threading
+
+        from http.server import HTTPServer
+
+        server = HTTPServer(("127.0.0.1", 0), R._HealthHandler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.handle_request)
+        thread.daemon = True
+        thread.start()
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health") as resp:
+            assert resp.status == 200
+            body = json.loads(resp.read())
+
+        assert body["status"] == "ok"
+        assert "mode" in body
+        assert "inference_count" in body
+        assert "mqtt_connected" in body
+
+    def test_unknown_path_returns_404(self):
+        import threading
+        from http.server import HTTPServer
+
+        server = HTTPServer(("127.0.0.1", 0), R._HealthHandler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.handle_request)
+        thread.daemon = True
+        thread.start()
+
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/notfound")
+            assert False, "expected HTTPError"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404
+
+
+# ---------------------------------------------------------------------------
+# Inference API (/api/v1/info, /api/v1/infer)
+# ---------------------------------------------------------------------------
+
+def _serve_one_request():
+    import threading
+    from http.server import HTTPServer
+
+    server = HTTPServer(("127.0.0.1", 0), R._HealthHandler)
+    thread = threading.Thread(target=server.handle_request)
+    thread.daemon = True
+    thread.start()
+    return f"http://127.0.0.1:{server.server_address[1]}"
+
+
+def _post(path, body):
+    base = _serve_one_request()
+    data = body if isinstance(body, bytes) else json.dumps(body).encode()
+    req = urllib.request.Request(
+        base + path, data=data, method="POST", headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
+class TestInfoEndpoint:
+    def test_returns_backend_and_model(self):
+        R._state["mode"] = "mock"
+        with urllib.request.urlopen(_serve_one_request() + "/api/v1/info") as resp:
+            assert resp.status == 200
+            body = json.loads(resp.read())
+
+        assert body["backend"] == "mock"
+        assert body["model_file"] is None
+        assert "model" in body
+        assert body["mqtt_topic_input"] == R.MQTT_TOPIC_INPUT
+
+    def test_reports_onnx_model_file_and_labels(self):
+        R._state["mode"] = "onnx"
+        R._state["model_file"] = "/onnx-models/m.onnx"
+        with patch.object(R, "ONNX_LABELS", ["idle", "running"]):
+            body = R._info()
+
+        assert body["model_file"] == "/onnx-models/m.onnx"
+        assert body["labels"] == ["idle", "running"]
+
+
+class TestInferEndpoint:
+    def setup_method(self):
+        R._runner = None
+        R._onnx_session = None
+        R._state["inference_count"] = 0
+
+    def test_returns_inference_result(self):
+        status, body = _post("/api/v1/infer", {"values": [1.2, 4.5, 7.8], "device": "bench"})
+
+        assert status == 200
+        assert body["device"] == "bench"
+        assert body["mode"] == "mock"
+        for key in ("label", "confidence", "anomaly_score", "latency_ms", "timestamp"):
+            assert key in body
+
+    def test_model_failure_is_422_not_a_mock_result(self):
+        session = MagicMock()
+        session.run.side_effect = RuntimeError("expected 4 features, got 1")
+        R._onnx_session = session
+        R._onnx_input_name = "input"
+
+        status, body = _post("/api/v1/infer", {"values": [1.0]})
+
+        assert status == 422
+        assert body == {"error": "ONNX inference failed: expected 4 features, got 1"}
+
+    def test_does_not_publish_store_or_count(self):
+        mock_api = MagicMock()
+        R._influx_write_api = mock_api
+
+        status, _ = _post("/api/v1/infer", {"values": [1.0]})
+
+        assert status == 200
+        mock_api.write.assert_not_called()
+        assert R._state["inference_count"] == 0
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            [1, 2, 3],
+            {},
+            {"values": []},
+            {"values": "1,2,3"},
+            {"values": [1, "2"]},
+            {"values": [True, 1.0]},
+            {"values": [1e200]},
+            {"values": [float("nan")]},
+        ],
+    )
+    def test_rejects_invalid_body(self, body):
+        status, resp = _post("/api/v1/infer", body)
+        assert status == 400
+        assert "error" in resp
+
+    def test_rejects_non_json(self):
+        status, _ = _post("/api/v1/infer", b"not json")
+        assert status == 400
+
+    def test_rejects_oversized_body(self):
+        # The handler rejects on Content-Length alone, without reading the body.
+        # Sending the body would race the server closing the socket (BrokenPipe).
+        import http.client
+        from urllib.parse import urlsplit
+
+        url = urlsplit(_serve_one_request())
+        conn = http.client.HTTPConnection(url.hostname, url.port, timeout=5)
+        try:
+            conn.putrequest("POST", "/api/v1/infer")
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("Content-Length", str(R.MAX_INFER_BODY_BYTES + 1))
+            conn.endheaders()
+            assert conn.getresponse().status == 413
+        finally:
+            conn.close()
+
+    def test_unknown_post_path_returns_404(self):
+        status, _ = _post("/api/v1/other", {"values": [1.0]})
+        assert status == 404

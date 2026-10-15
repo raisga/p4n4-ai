@@ -24,6 +24,7 @@ declare -A SERVICE_DEPS=(
     [ollama]=""
     [letta]=""
     [n8n]=""
+    [ei-runner]=""
 )
 
 # Reverse dependency map: what breaks if you stop X
@@ -31,9 +32,10 @@ declare -A SERVICE_DEPENDENTS=(
     [ollama]=""
     [letta]=""
     [n8n]=""
+    [ei-runner]=""
 )
 
-ALL_SERVICES=(ollama letta n8n)
+ALL_SERVICES=(ollama letta n8n ei-runner)
 
 # Each service sits in a Compose profile of its own name; enabling them all
 # lets this script start and stop any service, whatever COMPOSE_PROFILES says
@@ -55,6 +57,7 @@ get_port() {
         ollama)  echo "11434" ;;
         letta)   echo "8283" ;;
         n8n)     echo "5678" ;;
+        ei-runner) echo "8080" ;;
     esac
 }
 
@@ -163,14 +166,14 @@ select_with_gum() {
     local selected
     if [ ${#preselected[@]} -gt 0 ]; then
         selected=$(gum choose --no-limit \
-            --header="  GenAI: ollama, letta, n8n" \
+            --header="  GenAI: ollama, letta, n8n, ei-runner" \
             --cursor.foreground="6" \
             --selected.foreground="2" \
             --selected="${preselected[*]}" \
             "${options[@]}" 2>/dev/null || true)
     else
         selected=$(gum choose --no-limit \
-            --header="  GenAI: ollama, letta, n8n" \
+            --header="  GenAI: ollama, letta, n8n, ei-runner" \
             --cursor.foreground="6" \
             --selected.foreground="2" \
             "${options[@]}" 2>/dev/null || true)
@@ -199,7 +202,7 @@ select_without_gum() {
     print_status
 
     echo -e "${BOLD}  Available actions:${NC}"
-    echo -e "  ${GREEN}1${NC}) Start ALL services     (ollama, letta, n8n)"
+    echo -e "  ${GREEN}1${NC}) Start ALL services     (ollama, letta, n8n, ei-runner)"
     echo -e "  ${GREEN}2${NC}) Stop ALL services"
     echo -e "  ${GREEN}3${NC}) Custom selection"
     echo -e "  ${GREEN}4${NC}) Exit"

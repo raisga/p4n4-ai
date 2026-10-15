@@ -2,9 +2,9 @@
 # GenAI Stack Makefile
 # ==============================================================================
 
-.PHONY: help up down restart logs ps clean pull status interactive start stop \
+.PHONY: help up down restart logs ps clean pull build status interactive start stop \
         models pull-models test-ollama system1-pull system1-build system1-lock system1-test \
-        system1-train
+        system1-train deploy-model test-inference
 
 # Colors
 GREEN  := \033[0;32m
@@ -16,7 +16,7 @@ DIM    := \033[2m
 NC     := \033[0m
 
 # Service list
-AI_SERVICES := ollama letta n8n system1
+AI_SERVICES := ollama letta n8n system1 ei-runner
 
 # Each service is in a Compose profile of the same name. Started when neither
 # the environment nor .env sets COMPOSE_PROFILES:
@@ -42,6 +42,7 @@ help:
 	@printf "    $(GREEN)make logs$(NC)            Follow logs for all services\n"
 	@printf "    $(GREEN)make ps$(NC)              Docker compose ps\n"
 	@printf "    $(GREEN)make pull$(NC)            Pull latest images\n"
+	@printf "    $(GREEN)make build$(NC)           Build the inference runner image\n"
 	@printf "    $(GREEN)make clean$(NC)           Stop and remove volumes\n"
 	@echo ""
 	@printf "  $(BOLD)Modular:$(NC)\n"
@@ -60,8 +61,14 @@ help:
 	@printf "    $(GREEN)make system1-test$(NC)    Run the regression suite against the image\n"
 	@printf "    $(GREEN)make system1-train$(NC)   Fine-tune the checkpoint off the device (S4)\n"
 	@echo ""
+	@printf "  $(BOLD)Edge inference (ei-runner):$(NC)\n"
+	@printf "    $(GREEN)make deploy-model MODEL=path/to/model.{eim,onnx}$(NC)\n"
+	@printf "                         Copy a .eim model to edge-impulse/models/\n"
+	@printf "                         or a .onnx model to onnx/models/\n"
+	@echo ""
 	@printf "  $(BOLD)Testing:$(NC)\n"
 	@printf "    $(GREEN)make test-ollama$(NC)     Send a test prompt to Ollama\n"
+	@printf "    $(GREEN)make test-inference$(NC)  Send test sensor data to MQTT (ei-runner)\n"
 	@echo ""
 
 # ------------------------------------------------------------------------------
@@ -80,6 +87,7 @@ up:
 	@printf "  $(CYAN)n8n$(NC):    http://localhost:5678\n"
 	@printf "  $(CYAN)Letta$(NC):  http://localhost:8283\n"
 	@printf "  $(CYAN)Ollama$(NC): http://localhost:11434\n"
+	@printf "  $(CYAN)Runner$(NC): http://localhost:8080/health (with the ei-runner profile)\n"
 	@echo ""
 
 down:
@@ -96,12 +104,17 @@ logs:
 ps:
 	docker compose ps
 
+# The runner is built here, not pulled
 pull:
 	@echo "Pulling latest images..."
-	docker compose pull
+	docker compose pull --ignore-buildable
+
+build:
+	@echo "Building the inference runner image..."
+	docker compose --profile ei-runner build ei-runner
 
 clean:
-	@printf "$(RED)$(BOLD)  WARNING: This will DELETE ALL DATA (Ollama models, Letta agents, n8n workflows)$(NC)\n"
+	@printf "$(RED)$(BOLD)  WARNING: This will DELETE ALL DATA (Ollama models, Letta agents, n8n workflows, runner state)$(NC)\n"
 	@read -p "  Type 'yes' to confirm: " confirm; \
 	if [ "$$confirm" = "yes" ]; then \
 		echo "Stopping services and removing volumes..."; \
@@ -121,7 +134,7 @@ status:
 	@echo "  ════════════════════════════════════════════════════════════════════"
 	@printf "  $(BOLD)%-14s %-12s %-8s %s$(NC)\n" "SERVICE" "STATUS" "PORT" "URL"
 	@printf "  $(DIM)%-14s %-12s %-8s %s$(NC)\n" "─────────────" "──────────" "──────" "───────────────────────────"
-	@for svc in ollama letta n8n system1; do \
+	@for svc in ollama letta n8n system1 ei-runner; do \
 		container="p4n4-$$svc"; \
 		state=$$(docker inspect --format='{{.State.Status}}' $$container 2>/dev/null || echo "stopped"); \
 		case $$svc in \
@@ -129,6 +142,7 @@ status:
 			letta)   port="8283";  url="http://localhost:8283" ;; \
 			n8n)     port="5678";  url="http://localhost:5678" ;; \
 			system1) port="-";     url="p4n4-system1:8000 (p4n4-net only)" ;; \
+			ei-runner) port="8080"; url="http://localhost:8080/health" ;; \
 		esac; \
 		if [ "$$state" = "running" ]; then \
 			printf "  $(BOLD)%-14s$(NC) $(GREEN)%-12s$(NC) %-8s %s\n" "$$svc" "running" "$$port" "$$url"; \
@@ -154,17 +168,19 @@ deps_ollama :=
 deps_letta :=
 deps_n8n :=
 deps_system1 :=
+deps_ei-runner :=
 
 # Reverse deps (what breaks)
 rdeps_ollama :=
 rdeps_letta :=
 rdeps_n8n :=
 rdeps_system1 :=
+rdeps_ei-runner :=
 
 start:
 ifndef SERVICE
 	@printf "$(RED)  Usage: make start SERVICE=<name>$(NC)\n"
-	@printf "  Available: $(BOLD)ollama letta n8n system1$(NC)\n"
+	@printf "  Available: $(BOLD)ollama letta n8n system1 ei-runner$(NC)\n"
 	@exit 1
 endif
 	@deps="$(deps_$(SERVICE))"; \
@@ -179,7 +195,7 @@ endif
 stop:
 ifndef SERVICE
 	@printf "$(RED)  Usage: make stop SERVICE=<name>$(NC)\n"
-	@printf "  Available: $(BOLD)ollama letta n8n system1$(NC)\n"
+	@printf "  Available: $(BOLD)ollama letta n8n system1 ei-runner$(NC)\n"
 	@exit 1
 endif
 	@rdeps="$(rdeps_$(SERVICE))"; \
@@ -219,6 +235,46 @@ test-ollama:
 		-d '{"model":"llama3.2","prompt":"Reply with one word: healthy","stream":false}' \
 		| python3 -c "import sys,json; d=json.load(sys.stdin); print('  Response:', d.get('response','').strip())" \
 		2>/dev/null || printf "$(RED)  Ollama is not running or no models loaded. Run: make pull-models$(NC)\n"
+
+test-inference:
+	@printf "$(CYAN)  Publishing test sensor data to MQTT (topic: sensors/test-sensor-01/raw)...$(NC)\n"
+	@docker run --rm --network p4n4-net eclipse-mosquitto:2 \
+		mosquitto_pub -h p4n4-mqtt -t 'sensors/test-sensor-01/raw' \
+		-m '{"values":[1.23,4.56,7.89,0.12,3.45,6.78]}' \
+		2>/dev/null \
+		|| printf "$(RED)  Could not connect to p4n4-mqtt. Is p4n4-iot running?$(NC)\n"
+	@echo ""
+	@printf "$(CYAN)  Subscribing to inference/test-sensor-01/result for 3 seconds...$(NC)\n"
+	@docker run --rm --network p4n4-net eclipse-mosquitto:2 \
+		mosquitto_sub -h p4n4-mqtt -t 'inference/test-sensor-01/result' -W 3 \
+		2>/dev/null \
+		|| printf "$(DIM)  No results received (is ei-runner in COMPOSE_PROFILES? See: docker logs p4n4-ei-runner)$(NC)\n"
+
+# ------------------------------------------------------------------------------
+# Edge Inference Models (.eim → edge-impulse/models/, .onnx → onnx/models/)
+# ------------------------------------------------------------------------------
+
+deploy-model:
+ifndef MODEL
+	@printf "$(RED)  Usage: make deploy-model MODEL=path/to/model.eim|model.onnx$(NC)\n"
+	@exit 1
+endif
+	@printf "$(CYAN)  Deploying model: $(BOLD)$(MODEL)$(NC)\n"
+	@case "$(MODEL)" in \
+	*.eim) \
+		cp "$(MODEL)" edge-impulse/models/; \
+		printf "$(GREEN)  Model copied to edge-impulse/models/$(NC)\n"; \
+		printf "$(YELLOW)  Set EI_MODEL_FILE=$(notdir $(MODEL)) in your .env, then recreate the runner:$(NC)\n"; \
+		printf "$(YELLOW)    make up$(NC)\n" ;; \
+	*.onnx) \
+		cp "$(MODEL)" onnx/models/; \
+		printf "$(GREEN)  Model copied to onnx/models/$(NC)\n"; \
+		printf "$(YELLOW)  Set ONNX_MODEL_FILE=$(notdir $(MODEL)) in your .env, then recreate the runner:$(NC)\n"; \
+		printf "$(YELLOW)    make up$(NC)\n" ;; \
+	*) \
+		printf "$(RED)  Unsupported model type: $(MODEL) (expected .eim or .onnx)$(NC)\n"; \
+		exit 1 ;; \
+	esac
 
 # ------------------------------------------------------------------------------
 # System 1 (laya)
